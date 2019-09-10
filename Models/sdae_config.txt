@@ -1,0 +1,10 @@
+Number of layers: 2
+Hidden nodes: 100 20 
+Dropout: 0.02 0.02 
+Encoder activation: relu relu 
+Decoder activation: linear linear 
+Epochs: 300
+Bias: True
+Loss: mse
+Batch size: 256
+Optimizer: rmsprop
