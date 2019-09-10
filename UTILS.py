@@ -16,6 +16,7 @@ from functools import wraps
 import pandas as pd
 from datetime import datetime
 
+from StackedDenoisingAE import StackedDenoisingAE
 from sklearn.model_selection import StratifiedKFold, KFold
 import lightgbm as lgb
 
@@ -444,7 +445,7 @@ def lgb_clf_training(train, test, lgbParams=None, numFolds=3, stratified=True,
     return score, importances, y_pred
 
 
-def roc_auc_curve(y_test=None, y_pred=None, name="dense"):
+def plot_roc_auc_curve(y_test=None, y_pred=None, name="dense"):
     '''
     ----------
     Author: Michael Yin
@@ -498,7 +499,7 @@ def roc_auc_curve(y_test=None, y_pred=None, name="dense"):
     plt.ylabel('True Positive Rate(TPR)')
     plt.title('Micro Roc: {:0.5f}'.format(roc_auc["micro"]))
     plt.legend(loc="lower right")
-    plt.savefig("..//Plots//" + name + ".png", bbox_inches="tight", dpi=500)
+    plt.savefig(".//Plots//" + name + ".png", bbox_inches="tight", dpi=500)
     return roc_auc
 
 
@@ -512,6 +513,7 @@ def plot_feature_importance(importances=[], topK=10):
     
     plt.figure(figsize=(16, 9))
     sns.barplot(x=imp["featureName"][:topK].apply(str).values, y=imp["importances"][:topK].values, palette="Blues")
+    
 ###############################################################################
 ###############################################################################
 from keras.utils.np_utils import to_categorical
@@ -543,3 +545,40 @@ def simple_lgb_clf(X_train, X_valid, X_test, y_train, y_valid, y_test, name="den
     Y_test = to_categorical(y_test, len(np.unique(y_train)))
     auc = roc_auc_curve(Y_test, y_pred, name=name)
     return auc
+
+###############################################################################
+###############################################################################
+def get_dae_rep(trainData=None, vaildData=None, segRes=None,
+                windowSize=None, stride=None,
+                weight_regularizer=[], activity_regularizer=[],
+                n_hid=[20], dropout=[0.02], enc_act=["relu"], nb_epoch=80,
+                batch_size=256, early_stop_rounds=15, 
+                path=".//Data//rep_data//", fileName="rep_0", save_rep=False):
+    
+    # Check the parameters
+    if windowSize is None or stride == None:
+        return
+
+    sdae = StackedDenoisingAE(n_layers=len(n_hid), n_hid=n_hid, dropout=dropout,
+                              weight_regularizer=weight_regularizer,
+                              activity_regularizer=activity_regularizer,
+                              nb_epoch=nb_epoch, enc_act=["relu"],
+                              early_stop_rounds=early_stop_rounds, dec_act=["linear"],
+                              batch_size=batch_size, bias=True)
+    model, (dense_train, dense_val, dense_test), recon_mse = sdae.get_pretrained_sda(trainData, vaildData,
+           vaildData, dir_out='.//Models//', write_model=False)
+
+    # Combining the subsequences into a single sequence
+    newData = np.concatenate([dense_train, dense_test], axis=0)
+    newData = pd.DataFrame(newData)
+    newData["flag"] = segRes["ind"]
+    signalRep = newData.groupby(["flag"]).mean().values
+
+    # Save the data
+    if save_rep:
+        ls = LoadSave(path + fileName + "_" + str(windowSize) + "_"
+                      + str(stride) + ".pkl")
+        ls.save_data(signalRep)
+    return signalRep
+
+

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     
     ls = LoadSave()
     data = ls.load_data(".//Data//current_ts_merged_3300.pkl")
-    groutdTruth, ts, features = data[0].drop(["centerInd"], axis=1), data[1], data[2]
+    groundTruth, ts, features = data[0].drop(["centerInd"], axis=1), data[1], data[2]
     ###############################################################################
     ###############################################################################
     plt.close("all")
@@ -208,10 +208,10 @@ if __name__ == "__main__":
     
     # Colored by the ground truth
     f, ax = plt.subplots(figsize=(8, 6))
-    uniqueLabels = -np.sort(-groutdTruth["label"].unique())
+    uniqueLabels = -np.sort(-groundTruth["label"].unique())
     for ind, label in enumerate(uniqueLabels):
-        sampleIndex = np.arange(0, len(groutdTruth))
-        labeledSampleIndex = sampleIndex[groutdTruth["label"] == label]
+        sampleIndex = np.arange(0, len(groundTruth))
+        labeledSampleIndex = sampleIndex[groundTruth["label"] == label]
         
         coords = featuresPCA[labeledSampleIndex, :]
         if label != -1:
@@ -319,5 +319,5 @@ if __name__ == "__main__":
 #            plt.title(title)
 #    tsne = manifold.TSNE(n_components=2, init='pca', random_state=2019)
 #    X_tsne = tsne.fit_transform(featureTmp.values)
-#    plot_embedding(X_tsne, groutdTruth["label"].values)
+#    plot_embedding(X_tsne, groundTruth["label"].values)
     

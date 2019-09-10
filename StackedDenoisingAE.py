@@ -13,7 +13,8 @@ from keras import backend as K
 from keras.callbacks import EarlyStopping
 from keras.layers import Dense, Dropout, Input
 from keras.models import Model, Sequential, model_from_json
-from keras.regularizers import l1
+from keras.regularizers import l1, l2, l1_l2
+from sklearn.preprocessing import MinMaxScaler
 
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 ###############################################################################
@@ -51,6 +52,7 @@ def batch_generator(X=None, Y=None, batch_size=128, shuffle=True, seed=2019):
                 np.random.shuffle(sample_index)
             counter = 0
 
+
 def x_generator(X=None, batch_size=128, shuffle=True, seed=2019):
     number_of_batches = np.ceil(X.shape[0] / batch_size)
     counter = 0
@@ -72,6 +74,26 @@ def x_generator(X=None, batch_size=128, shuffle=True, seed=2019):
             x_batch = X[batch_index, :]
         yield x_batch, batch_index
         counter += 1
+
+
+def kullback_leibler_divergence(y_true, y_pred):
+    '''
+    @Description:
+    ----------
+    Implement the KL divergence.
+
+    @Parameters:
+    ----------
+
+    @Return:
+    ----------
+    None.
+    '''
+    
+    y_true = K.clip(y_true, K.epsilon(), 1)
+    y_pred = K.clip(y_pred, K.epsilon(), 1)
+    return K.sum(y_true * K.log(y_true / y_pred), axis=-1)
+
 
 def save_model(model=None, out_dir=None, f_arch='model_arch.png', f_model='model_arch.json', f_weights='model_weights.h5'):
     '''
@@ -230,6 +252,7 @@ class StackedDenoisingAE(object):
     '''
     def __init__(self, n_layers=1, n_hid=[500], dropout=[0.05],
                  enc_act=['sigmoid'], dec_act=['linear'],
+                 weight_regularizer=[], activity_regularizer=[],
                  bias=True, loss_fn='mse', optimizer='rmsprop',
                  batch_size=32, early_stop_rounds=10, nb_epoch=300, verbose=1):
         
@@ -237,9 +260,9 @@ class StackedDenoisingAE(object):
         self.n_hid, self.dropout, self.enc_act, self.dec_act = self._assert_input(n_layers,
                                                                                   n_hid, dropout,
                                                                                   enc_act, dec_act)
-        self.enc_regularizer_l1, self.enc_regularizer_l2 = None, None
-        self.dec_regularizer_l1, self.dec_regularizer_l2 = None, None
-        
+        self.weight_regularizer, self.activity_regularizer = self._regularizer_check(n_layers,
+                                                                                     weight_regularizer,
+                                                                                     activity_regularizer)
         self.bias = bias
         self.loss_fn = loss_fn
         self.batch_size = batch_size
@@ -248,19 +271,22 @@ class StackedDenoisingAE(object):
         self.verbose = verbose
         self.early_stop_rounds = early_stop_rounds
         
+        
     def get_pretrained_sda(self, data_in, data_val, data_test, dir_out=".//Models//",
                            get_enc_model=True, write_model=True, model_layers=None):
         '''
         @Description:
         ----------
-        (1) Pretrains layers of a stacked denoising autoencoder to generate
-            low-dimensional representation of data.
-        (2) Returns a Sequential model with the Dropout layer and pretrained encoding layers added sequentially. 
-        (3) Optionally, we can return a list of pretrained sdae models by setting get_enc_model to False. 
-        (4) Additionally, returns dense representation of input, validation and test data. 
-        (5) This dense representation is the value of the hidden node of the last layer.
-        (6) The cur_model be used in supervised task by adding a classification/regression layer on top, 
-            or the dense pretrained data can be used as input of another cur_model.
+        -- Pretrains layers of a stacked denoising autoencoder to generate
+        low-dimensional representation of data.
+        -- Returns a Sequential model with the Dropout layer and pretrained
+        encoding layers added sequentially.
+        -- Optionally, we can return a list of pretrained sdae models by
+        setting get_enc_model to False.
+        -- Additionally, returns dense representation of input, validation and test data.
+        This dense representation is the value of the hidden node of the last layer.
+        -- The cur_model be used in supervised task by adding a classification/regression layer on top,
+        or the dense pretrained data can be used as input of another cur_model.
 
         @Parameters:
         ----------
@@ -290,38 +316,41 @@ class StackedDenoisingAE(object):
         else:
             model_layers = [None] * self.n_layers
         
-        encoders = []
-        recon_mse = []
-        print("Start hidden layer pretraining:")
+        encoders, recon_mse = [], []
+        print("\nStart hidden layer pretraining:")
         print("=================================================================")
-        print("Start at {}".format(datetime.now()))
+        print("@Start at {}".format(datetime.now()))
         for cur_layer in range(self.n_layers):
             
             if model_layers[cur_layer] is None:
                 
                 # Create the input layer
-                input_layer = Input(shape = (data_in.shape[1], ))
+                input_layer = Input(shape=(data_in.shape[1], ))
                 
                 # Create the dropout layer
                 dropout_layer = Dropout(self.dropout[cur_layer])
                 in_dropout = dropout_layer(input_layer)
                 
                 # Create the encodoing layer
-                encoder_layer = Dense(output_dim=self.n_hid[cur_layer], init='glorot_uniform',
+                encoder_layer = Dense(output_dim=self.n_hid[cur_layer],
+                                      init='glorot_uniform',
                                       activation=self.enc_act[cur_layer],
-                                      name='encoder_'+str(cur_layer), bias=self.bias)
+                                      name='encoder_'+str(cur_layer), bias=self.bias,
+                                      kernel_regularizer=self.weight_regularizer[cur_layer],
+                                      activity_regularizer=self.activity_regularizer[cur_layer])
                 encoder = encoder_layer(in_dropout)
                 
                 # Create the decoding layer
                 n_out = data_in.shape[1]
-                decoder_layer = Dense(output_dim=n_out, bias=self.bias, init='glorot_uniform',
+                decoder_layer = Dense(output_dim=n_out, bias=self.bias,
+                                      init='glorot_uniform',
                                       activation=self.dec_act[cur_layer],
                                       name='decoder_'+str(cur_layer))
                 decoder = decoder_layer(encoder)
                 
                 # Complie the model
                 cur_model = Model(input_layer, decoder)
-                cur_model.compile(loss = self.loss_fn, optimizer=self.optimizer)
+                cur_model.compile(loss=self.loss_fn, optimizer=self.optimizer)
                 cur_model.summary()
             else:
                 cur_model = model_layers[cur_layer]
@@ -332,17 +361,17 @@ class StackedDenoisingAE(object):
             early_stopping = EarlyStopping(monitor='val_loss',
                                            patience=self.early_stop_rounds,
                                            verbose=0)
-            hist = cur_model.fit_generator(generator = batch_generator(data_in, data_in,
-                                                                       batch_size=self.batch_size,
-                                                                       shuffle=True),
-                                                                       callbacks=[early_stopping],
-                                                                       nb_epoch=self.nb_epoch,
-                                                                       samples_per_epoch=np.ceil(data_in.shape[0]/self.batch_size),
-                                                                       verbose=self.verbose,
-                                                                       validation_data=batch_generator(data_val, data_val,
-                                                                                                       batch_size=self.batch_size,
-                                                                                                       shuffle=False),
-                                                                       nb_val_samples=np.ceil(data_val.shape[0]/self.batch_size))
+            hist = cur_model.fit_generator(generator=batch_generator(data_in, data_in,
+                                                                     batch_size=self.batch_size,
+                                                                     shuffle=True),
+            callbacks=[early_stopping],
+            nb_epoch=self.nb_epoch,
+            samples_per_epoch=np.ceil(data_in.shape[0]/self.batch_size),
+            verbose=self.verbose,
+            validation_data=batch_generator(data_val, data_val,
+                                            batch_size=self.batch_size,
+                                            shuffle=False),
+                                            nb_val_samples=np.ceil(data_val.shape[0]/self.batch_size))
             print("Layer " + str(cur_layer) + " has been trained.")
             
             # -----------------------------------------
@@ -378,10 +407,14 @@ class StackedDenoisingAE(object):
                                                     batch_size=self.batch_size)
             
             # Step 2: GET THE HIDDEN OUTPUT AS THE VALIDATION DATA AND TESTING DATA.(WITHOUT DROPOUT)
-            data_val = self._get_intermediate_output(cur_model, data_val, n_layer=2, train=0,
-                                                     n_out=self.n_hid[cur_layer], batch_size=self.batch_size)
-            data_test = self._get_intermediate_output(cur_model, data_test, n_layer=2, train=0,
-                                                      n_out=self.n_hid[cur_layer], batch_size=self.batch_size)
+            data_val = self._get_intermediate_output(cur_model, data_val,
+                                                     n_layer=2, train=0,
+                                                     n_out=self.n_hid[cur_layer],
+                                                     batch_size=self.batch_size)
+            data_test = self._get_intermediate_output(cur_model, data_test,
+                                                      n_layer=2, train=0,
+                                                      n_out=self.n_hid[cur_layer],
+                                                      batch_size=self.batch_size)
             # -----------------------------------------
 
         # Write down some important parameters information in **.txt form.
@@ -395,9 +428,10 @@ class StackedDenoisingAE(object):
                            f_model='enc_layers.json', f_weights='enc_layers_weights.h5')
         else:
             final_model = model_layers
-        print("End pre-training model at {}".format(datetime.now()))
+        print("@End pre-training model at {}".format(datetime.now()))
         print("=================================================================")
         return final_model, (data_in, data_val, data_test), recon_mse
+
 
     def supervised_classification(self, model, x_train=[], x_val=[], x_test=[], y_train=[], y_val=[], y_test=[],
                                   n_classes=2, final_act_fn='softmax', loss='categorical_crossentropy', get_recon_error=False):
@@ -486,6 +520,7 @@ class StackedDenoisingAE(object):
         print("=================================================================")
         return model
 
+
     def evaluate_on_test(self, fit_model, x_test, y_test, n_classes):
         """
         Evaluate a trained model on test dataset 
@@ -495,6 +530,7 @@ class StackedDenoisingAE(object):
                                                                  batch_size = self.batch_size,
                                                                  shuffle = False),
                                                                  samples = x_test.shape[0],)
+
 
     def _write_sda_config(self, dir_out):
         """
@@ -526,6 +562,7 @@ class StackedDenoisingAE(object):
             f.write("\nLoss: " + str(self.loss_fn))
             f.write("\nBatch size: " + str(self.batch_size))
             f.write("\nOptimizer: " + str(self.optimizer))
+
 
     def _get_intermediate_output(self, model=None, data_in=None, n_layer=None, train=None,
                                  n_out=None, batch_size=128, dtype=np.float32):
@@ -568,6 +605,7 @@ class StackedDenoisingAE(object):
         
         return data_out.astype(dtype, copy = False)
             
+    
     def _get_nth_layer_output(self, model, n_layer, X, train=1):
         '''
         @Description:
@@ -597,6 +635,7 @@ class StackedDenoisingAE(object):
         get_nth_layer_output = K.function([model.layers[0].input, K.learning_phase()], [model.layers[n_layer].output])
         return get_nth_layer_output([X, train])[0]
 
+
     def _get_recon_error(self, model=None, data_in=None, n_out=None):
         '''
         @Description:
@@ -620,20 +659,24 @@ class StackedDenoisingAE(object):
         ----------
         The reconstruction error.(int-like)
         '''
-        train_recon = self._get_intermediate_output(model, data_in, n_layer = -1, train = 0,
-                                                    n_out = n_out, batch_size = self.batch_size) 
-        recon_mse = np.mean(np.square(train_recon - data_in), axis = 0)
+        train_recon = self._get_intermediate_output(model, data_in, n_layer=-1, train=0,
+                                                    n_out=n_out, batch_size=self.batch_size) 
+        recon_mse = np.mean(np.square(train_recon - data_in), axis=0)
         
         recon_mse = np.ravel(recon_mse)
         mean_recon_mse = np.mean(recon_mse)
         return mean_recon_mse
 
+
     def _assert_input(self, n_layers, n_hid, dropout, enc_act, dec_act):
         '''
         @Description:
         ----------
-        If the hidden nodes, dropout proportion, encoder activation function or decoder activation function is given, it uses the same parameter for all the layers.
-        Errors occurs when there is a size dismatch between the number of layers and parameters of each layer.
+        If the hidden nodes, dropout proportion, encoder activation function
+        or decoder activation function is given, it uses the same parameter
+        for all the layers.
+        Errors occurs when there is a size dismatch between the number of
+        layers and parameters of each layer.
 
         @Parameters:
         ----------
@@ -656,7 +699,14 @@ class StackedDenoisingAE(object):
         dropout == [0.01] where n_hid == 3, then return dropout == [0.01, 0.01, 0.01]
         '''
         if isinstance(n_layers, int):
+            pass
+        else:
             raise TypeError("Unkown n_layers Parameter!")
+        
+        if isinstance(n_hid, list) and isinstance(dropout, list) and isinstance(enc_act, list) and isinstance(dec_act, list):
+            pass
+        else:
+            raise TypeError("Unknow parameters !")
         
         if len(n_hid) == 1:
             n_hid = n_hid * n_layers
@@ -677,10 +727,54 @@ class StackedDenoisingAE(object):
         assert (n_layers == len(n_hid) == len(dropout) == len(enc_act) == len(dec_act)), "Please specify as many hidden nodes, dropout proportion on input, and encoder and decoder activation function, as many layers are there, using list data structure"
         return n_hid, dropout, enc_act, dec_act
     
-    def _regularizer_check(self, n_layers, enc_regularizer_l1, enc_regularizer_l2,
-                           dec_regularizer_l1, dec_regularizer_l2):
-        if isinstance(enc_regularizer_l1, list) and isinstance(enc_regularizer_l2, list):
-            raise TypeError("Invalid regularizer")
+    
+    def _regularizer_check(self, n_layers, weight_regularizer, activity_regularizer):
+        '''
+        @Description:
+        ----------
+        Check the regularizer parameter for each layer.
+        
+        @Parameters:
+        ----------
+        n_layers: int-like
+            The number of hidden layer of the Stacked Denoising Autoencoder.
+        
+        weight_regularizer: list-like
+            The number of hidden units of each decoding-encoding network.
+        
+        activity_regularizer: list-like
+            The activation function of each encoding layer.
+        
+        @Returns:
+        ----------
+        
+        '''
+        if isinstance(weight_regularizer, list) and isinstance(activity_regularizer, list):
+            pass
+        else:
+            raise TypeError("Invalid regularizer !")
+        
+        # weight_regularizer check.
+        if len(weight_regularizer) == 0:
+            weight_regularizer = [None] * n_layers
+            
+        if len(weight_regularizer) != n_layers and len(weight_regularizer) == 1:
+            weight_regularizer = weight_regularizer * n_layers
+            
+        if len(weight_regularizer) != n_layers:
+            raise ValueError("n_layers != the length of weight_regularizer !")
+        
+        # activity_regularizer check.
+        if len(activity_regularizer) == 0:
+            activity_regularizer = [None] * n_layers
+            
+        if len(activity_regularizer) != n_layers and len(activity_regularizer) == 1:
+            activity_regularizer = activity_regularizer * n_layers
+            
+        if len(activity_regularizer) != n_layers:
+            raise ValueError("n_layers != the length of activity_regularizer !")     
+        return weight_regularizer, activity_regularizer
+    
     
     def _build_model_from_encoders(self, encoding_layers, dropout_all=False):
         '''
@@ -710,5 +804,4 @@ class StackedDenoisingAE(object):
                 
             encoding_layers[i].inbound_nodes = []
             model.add(encoding_layers[i])
-            
         return model
