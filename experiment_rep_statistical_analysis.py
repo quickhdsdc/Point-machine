@@ -115,39 +115,39 @@ if __name__ == "__main__":
     '''
     Plot 1: DIfferent cluster and its representations.
     '''
-#    fig, axObj = plt.subplots(len(rep)+1, 4, figsize=(12, 10))
-#    labelToPlot, signalsEachPlot = [1, 2, 3, -1], 5
-#    selectedSamples = []
-#    for label in labelToPlot:
-#        sampleInd = groundTruth[groundTruth["label"] == label]["ind"].values
-#        selectedSamples.append(np.random.choice(sampleInd, size=signalsEachPlot, replace=False))
-#    
-#    # Plot the original signals
-#    for ind, item in enumerate(axObj[0]):
-#        sampleInd = selectedSamples[ind]
-#        for i in sampleInd:
-#            item.plot(ts[int(i)], color="k", linewidth=1.5)
-#            item.tick_params(axis="y", labelsize=8)
-#            item.tick_params(axis="x", labelsize=8)
-#            
-#    # Plot each cluster of the signals
-#    for ax_ind in range(1, len(rep)+1):
-#        for ind, item in enumerate(axObj[ax_ind]):
-#            sampleInd = selectedSamples[ind]
-#            for i in sampleInd:
-#                item.plot(rep[ax_ind-1][int(i), :], color="b", linewidth=1.5)
-#                item.tick_params(axis="y", labelsize=8)
-#                item.tick_params(axis="x", labelsize=8)
-#
-#    plt.tight_layout()
-#    
-#    if plotSave == True:
-#        plt.savefig(".//Plots//different_rep_with_different_cluster.png", dpi=500, bbox_inches="tight")
+    fig, axObj = plt.subplots(len(rep)+1, 4, figsize=(12, 10))
+    labelToPlot, signalsEachPlot = [1, 2, 3, -1], 5
+    selectedSamples = []
+    for label in labelToPlot:
+        sampleInd = groundTruth[groundTruth["label"] == label]["ind"].values
+        selectedSamples.append(np.random.choice(sampleInd, size=signalsEachPlot, replace=False))
+    
+    # Plot the original signals
+    for ind, item in enumerate(axObj[0]):
+        sampleInd = selectedSamples[ind]
+        for i in sampleInd:
+            item.plot(ts[int(i)], color="k", linewidth=1.5)
+            item.tick_params(axis="y", labelsize=8)
+            item.tick_params(axis="x", labelsize=8)
+            
+    # Plot each cluster of the signals
+    for ax_ind in range(1, len(rep)+1):
+        for ind, item in enumerate(axObj[ax_ind]):
+            sampleInd = selectedSamples[ind]
+            for i in sampleInd:
+                item.plot(rep[ax_ind-1][int(i), :], color="b", linewidth=1.5)
+                item.tick_params(axis="y", labelsize=8)
+                item.tick_params(axis="x", labelsize=8)
+
+    plt.tight_layout()
+    
+    if plotSave == True:
+        plt.savefig(".//Plots//different_rep_with_different_cluster.png", dpi=500, bbox_inches="tight")
     ###############################################
     ###############################################
-    '''
-    Plot 2: Hidden representation of the rep with the-same-dim.
-    '''
+#    '''
+#    Plot 2: Hidden representation of the rep with the-same-dim.
+#    '''
 #    fig, axObj = plt.subplots(2, 2, figsize=(12, 8))
 #    
 #    for ind, ax in enumerate(axObj.ravel()):
@@ -171,34 +171,34 @@ if __name__ == "__main__":
     '''
     Plot 3: Dimen-redunction for the rep.
     '''
-    fig, axObj = plt.subplots(2, 2, figsize=(12, 8))
-    for i, ax in enumerate(axObj.ravel()):
-        
-        X_sc = StandardScaler()
-        rep_pca = X_sc.fit_transform(rep[i])
-        
-        clf = KernelPCA(n_components=2, kernel="rbf", gamma=0.05)
-        rep_pca = clf.fit_transform(rep_pca)
-        
-        uniqueLabels = -np.sort(-groundTruth["label"].unique())
-        for j, label in enumerate(uniqueLabels):
-            sampleIndex = np.arange(0, len(groundTruth))
-            labeledSampleIndex = sampleIndex[groundTruth["label"] == label]
-            
-            coords = rep_pca[labeledSampleIndex, :]
-            if label != -1:
-                ax.scatter(coords[:, 0], coords[:, 1], s=10, 
-                           color=colors[j], marker=".", label="Class " + str(j))
-            else:
-                ax.scatter(coords[:, 0], coords[:, 1], s=10, 
-                           color='r', marker="x", label="Class Abnormal")
-            ax.tick_params(axis="y", labelsize=8)
-            ax.tick_params(axis="x", labelsize=8)
-            ax.legend(fontsize=8)
-    plt.tight_layout()
-    
-    if plotSave == True:
-        plt.savefig(".//Plots//different_rep_anomaly.png", dpi=500, bbox_inches="tight")
-    plt.close("all")    
+#    fig, axObj = plt.subplots(2, 2, figsize=(12, 8))
+#    for i, ax in enumerate(axObj.ravel()):
+#        
+#        X_sc = StandardScaler()
+#        rep_pca = X_sc.fit_transform(rep[i])
+#        
+#        clf = KernelPCA(n_components=2, kernel="rbf", gamma=0.05)
+#        rep_pca = clf.fit_transform(rep_pca)
+#        
+#        uniqueLabels = -np.sort(-groundTruth["label"].unique())
+#        for j, label in enumerate(uniqueLabels):
+#            sampleIndex = np.arange(0, len(groundTruth))
+#            labeledSampleIndex = sampleIndex[groundTruth["label"] == label]
+#            
+#            coords = rep_pca[labeledSampleIndex, :]
+#            if label != -1:
+#                ax.scatter(coords[:, 0], coords[:, 1], s=10, 
+#                           color=colors[j], marker=".", label="Class " + str(j))
+#            else:
+#                ax.scatter(coords[:, 0], coords[:, 1], s=10, 
+#                           color='r', marker="x", label="Class Abnormal")
+#            ax.tick_params(axis="y", labelsize=8)
+#            ax.tick_params(axis="x", labelsize=8)
+#            ax.legend(fontsize=8)
+#    plt.tight_layout()
+#    
+#    if plotSave == True:
+#        plt.savefig(".//Plots//different_rep_anomaly.png", dpi=500, bbox_inches="tight")
+#    plt.close("all")    
 
 
