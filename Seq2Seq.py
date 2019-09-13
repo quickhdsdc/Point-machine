@@ -13,9 +13,11 @@ import scipy.sparse as scp
 import seaborn as sns
 from UTILS import LoadSave
 #from keras.utils.vis_utils import plot_model
+
+import keras
 from keras import backend as K
 from keras.callbacks import EarlyStopping
-from keras.layers import Input, LSTM, Dense, RepeatVector, TimeDistributed, Masking, RNN
+from keras.layers import Input, LSTM, Dense, RepeatVector, TimeDistributed, Masking, RNN, GRU, Lambda
 from keras.models import Model, Sequential, model_from_json
 from keras.layers.recurrent import GRUCell 
 from keras.preprocessing.sequence import pad_sequences
@@ -461,7 +463,6 @@ def lstm_autoencoder(data_train=None, data_valid=None, time_steps=None):
     model.add(TimeDistributed(Dense(data_train.shape[2], activation='sigmoid')))
     model.add(TimeDistributed(Masking(mask_value=-5)))
     model.compile(optimizer='adam', loss='mae')
-    model.build(data_train.shape)
     
     model.summary()
     early_stopping = EarlyStopping(monitor='val_loss',
@@ -476,6 +477,90 @@ def lstm_autoencoder(data_train=None, data_valid=None, time_steps=None):
     yhat = model.predict(data_valid[:, ::-1, :], verbose=0)
     return yhat
 
+
+def gru_autoencoder(data_train=None, data_valid=None, time_steps=None, mask_val=0):
+    
+    # Data format
+    data_train_reverse = data_train[:, ::-1, :]
+    data_valid_reverse = data_valid[:, ::-1, :]
+    
+    '''
+    Part 1: Double input of the encoder
+    '''
+    K.clear_session()
+    encoder_normal_inputs = Input(shape=(time_steps, 1))
+    mask_normal = Masking(mask_value=mask_val)(encoder_normal_inputs)
+    encoder_normal = GRU(150, return_state=True, activation='tanh')
+    encoder_normal_outputs, state_normal_h = encoder_normal(mask_normal)
+
+    encoder_reverse_inputs = Input(shape=(time_steps, 1))
+    mask_normal = Masking(mask_value=mask_val)(encoder_reverse_inputs)
+    encoder_reverse = GRU(150, return_state=True, activation='tanh')
+    encoder_reverse_outputs, state_reverse_h = encoder_reverse(encoder_reverse_inputs)
+    
+    encoder_hidden_states = [state_normal_h, state_reverse_h]
+    encoder_outputs = Lambda(lambda x: K.concatenate(x, axis=1))(encoder_hidden_states)
+    states = Dense(50, activation='elu')(encoder_outputs)
+    
+    states_to_preserve = [states]
+    '''
+    Part 2: Decoder part. Set up the decoder,
+            which will only process one timestep at a time.
+    '''
+    decoder_inputs = Input(shape=(1, 1))
+    decoder = GRU(50, return_sequences=True, return_state=True)
+    decoder_dense = Dense(1, activation='sigmoid')
+    
+    decoder_all_outputs = []
+    inputs = decoder_inputs
+    for _ in range(time_steps):
+        # Run the decoder on one timestep
+        outputs, state_h = decoder(inputs, initial_state=states)
+        outputs = decoder_dense(outputs)
+        
+        # Store the current prediction
+        decoder_all_outputs.append(outputs)
+        
+        inputs = outputs
+        states = [state_h]
+    
+    # Form the decoder outputs
+    decoder_outputs = Lambda(lambda x: K.concatenate(x, axis=1))(decoder_all_outputs)
+    
+    '''
+    Part 3: Define and complie the model.
+    '''
+    # Define and compile model as previously
+    model = Model([encoder_normal_inputs, encoder_reverse_inputs,
+                   decoder_inputs], decoder_outputs)
+    model.compile(optimizer='adam', loss='mae')
+    
+    '''
+    Part 4: Fit the model.
+    '''
+    decoder_input_data = np.zeros((len(data_train), 1, 1))
+    decoder_input_data[:, 0, 0] = 0.3
+
+    early_stopping = EarlyStopping(monitor='val_loss',
+                                   patience=400,
+                                   verbose=1)
+    model.fit([data_train, data_train_reverse,
+               decoder_input_data], data_train, batch_size=3000, epochs=3000, verbose=1,
+    validation_data=[[data_train, data_train_reverse, decoder_input_data], data_train],
+    callbacks=[early_stopping])
+    
+    decoder_input_data = np.zeros((len(data_valid), 1, 1))
+    decoder_input_data[:, 0, 0] = 0.3
+    data_valid_recon = model.predict([data_valid, data_valid_reverse,
+                                      decoder_input_data])
+    
+    '''
+    Part 5: Construct the encoder.
+    '''
+    encoder = Model([encoder_normal_inputs, encoder_reverse_inputs], states_to_preserve[0])
+    rep = encoder.predict([data_valid, data_valid_reverse])
+    
+    return data_valid_recon, rep
 ###############################################################################
 def load_data():
     fileName = ["current_ts_merged_3300.pkl"]
@@ -515,13 +600,13 @@ if __name__ == "__main__":
     for ind in range(len(ts)):
         if max(ts[ind]) != min(ts[ind]):
             ts[ind] = (np.array(ts[ind]) - min(ts[ind]))/(max(ts[ind]) - min(ts[ind]))
-    paddingTs = pad_sequences(ts, padding="pre", dtype="float64", value=-5)
+    paddingTs = pad_sequences(ts, padding="pre", dtype="float64", value=0)
     paddingTs[np.isnan(paddingTs)] = 0
 
-    trainPrecent = 0.75
+    trainPrecent = 0.9
     train_index, valid_index = index[:int(trainPrecent * len(paddingTs))], index[int(trainPrecent * len(paddingTs)):]
     data_train, data_valid = paddingTs[:int(trainPrecent * len(paddingTs)), :], paddingTs[int(trainPrecent * len(paddingTs)):, :]
-#    data_train, data_valid = data_train[:, :100], data_valid[:, :100]
+#    data_train, data_valid = data_train[:, :20], data_valid[:, :20]
     data_train_nums, data_valid_nums, ts_point_nums = len(data_train), len(data_valid), data_train.shape[1]
     
     tsTotalNums, tsTotalPtsNums = len(ts), len(data_train[0])
@@ -532,33 +617,29 @@ if __name__ == "__main__":
     '''
     Training the seq2seq(GRU) model.
     '''
+    
+    predicted_res, rep = gru_autoencoder(data_train=data_train, data_valid=data_valid,
+                                         time_steps=tsTotalPtsNums, mask_val=0)
+    
+    
 #    clf = seq2seq(layers=[200], input_length=tsTotalPtsNums,
 #                  output_length=tsTotalPtsNums, nb_epoch=100, batch_size=512,
 #                  input_dim=1, output_dim=1, predict_steps=1, early_stop_rounds=10)
 #    clf.fit(data_train, data_valid, data_valid)
 #    predicted_res = clf.predict(data_valid, num_steps_to_predict=ts_point_nums, batch_size=256)
-    
-    predicted_res = lstm_autoencoder(data_train, data_valid, time_steps=tsTotalPtsNums)
-    
-    plotInd = np.random.randint(0, len(data_valid), 40)
+#    
+#    predicted_res = lstm_autoencoder(data_train, data_valid, time_steps=tsTotalPtsNums)
+#    
+    plotInd = np.random.randint(0, len(data_valid), 20)
     plt.figure(figsize=(16, 9))
     for ind in plotInd:
         plt.plot(data_valid[ind][:, 0], color='b', linewidth=2)
         plt.plot(predicted_res[ind][:, 0], color='r', linewidth=2)
     plt.title("Validation Prediction")
-#    
-#    plotNoiseInd = np.random.choice([ind for ind, item in enumerate(valid_index) if groundTruth["label"].loc[item] == -1], 10)
-#    plt.figure(figsize=(16, 9))
-#    for ind in plotNoiseInd:
-#        plt.plot(data_valid[ind][:, 0], color='b', linewidth=2)
-#        plt.plot(predicted_res[ind][:, 0], color='r', linewidth=2)
-#    plt.title("Noise Prediction")
-        
-#    # Prediction(Validating)
-#    predicted_res = clf.predict(data_train, num_steps_to_predict=ts_point_nums, batch_size=256)
-#    plotInd = np.random.randint(0, len(data_train), 20)
-#    plt.figure()
-#    for ind in plotInd:
-#        plt.plot(data_train[ind], color='b', linewidth=2)
-#        plt.plot(predicted_res[ind], color='r', linewidth=2)
-#    plt.title("Training Prediction")
+    
+    plotNoiseInd = np.random.choice([ind for ind, item in enumerate(valid_index) if groundTruth["label"].loc[item] == -1], 10)
+    plt.figure(figsize=(16, 9))
+    for ind in plotNoiseInd:
+        plt.plot(data_valid[ind][:, 0], color='b', linewidth=2)
+        plt.plot(predicted_res[ind][:, 0], color='r', linewidth=2)
+    plt.title("Noise Prediction")
