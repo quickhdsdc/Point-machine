@@ -1,10 +1,10 @@
-Number of layers: 1
-Hidden nodes: 20 
-Dropout: 0.02 
-Encoder activation: relu 
-Decoder activation: linear 
-Epochs: 80
+Number of layers: 2
+Hidden nodes: 60 30 
+Dropout: 0.05 0.05 
+Encoder activation: relu relu 
+Decoder activation: linear linear 
+Epochs: 500
 Bias: True
 Loss: mse
-Batch size: 256
+Batch size: 512
 Optimizer: rmsprop

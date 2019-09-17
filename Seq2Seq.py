@@ -618,15 +618,15 @@ if __name__ == "__main__":
     Training the seq2seq(GRU) model.
     '''
     
-    predicted_res, rep = gru_autoencoder(data_train=data_train, data_valid=data_valid,
-                                         time_steps=tsTotalPtsNums, mask_val=0)
+#    predicted_res, rep = gru_autoencoder(data_train=data_train, data_valid=data_valid,
+#                                         time_steps=tsTotalPtsNums, mask_val=0)
     
     
-#    clf = seq2seq(layers=[200], input_length=tsTotalPtsNums,
-#                  output_length=tsTotalPtsNums, nb_epoch=100, batch_size=512,
-#                  input_dim=1, output_dim=1, predict_steps=1, early_stop_rounds=10)
-#    clf.fit(data_train, data_valid, data_valid)
-#    predicted_res = clf.predict(data_valid, num_steps_to_predict=ts_point_nums, batch_size=256)
+    clf = seq2seq(layers=[50], input_length=tsTotalPtsNums,
+                  output_length=tsTotalPtsNums, nb_epoch=4000, batch_size=3000,
+                  input_dim=1, output_dim=1, predict_steps=1, early_stop_rounds=700)
+    clf.fit(data_train, data_valid, data_valid)
+    predicted_res = clf.predict(data_valid, num_steps_to_predict=ts_point_nums, batch_size=256)
 #    
 #    predicted_res = lstm_autoencoder(data_train, data_valid, time_steps=tsTotalPtsNums)
 #    

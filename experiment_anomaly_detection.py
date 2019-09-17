@@ -115,72 +115,72 @@ if __name__ == "__main__":
     '''
     Plot 1: DIfferent roc score under different lof nn parameters.
     '''
-    plt.close("all")
-    fig, axObj = plt.subplots(2, 2, figsize=(12, 9))
-    pts_index = [i for i in range(5, 250, 3)]
-    lw = 2
-    axObj[0][0].plot(featureRocRec[2][featureRocBestInd][1],
-                     featureRocRec[2][featureRocBestInd][2],
-                     label='FeatureBased(auc={:.3f})'.format(featureRocBest),
-                     lw=lw)    
-    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
-        axObj[0][0].plot(rocRec_ind[2][rocBestInd_ind][1],
-                         rocRec_ind[2][rocBestInd_ind][2],
-                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocBest_ind),
-                         lw=lw)
-    axObj[0][0].legend(fontsize=8)
-    axObj[0][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-    
-    # 29(8)
-    index_0_1 = 30
-    pts = pts_index[index_0_1]
-    axObj[0][1].plot(featureRocRec[2][index_0_1][1],
-                     featureRocRec[2][index_0_1][2],
-                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_0_1]),
-                     lw=lw)
-    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
-        axObj[0][1].plot(rocRec_ind[2][index_0_1][1],
-                         rocRec_ind[2][index_0_1][2],
-                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_0_1]),
-                         lw=lw)
-    axObj[0][1].legend(fontsize=8)
-    axObj[0][1].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-
-    # 59(18)
-    index_1_0 = 50
-    pts = pts_index[index_1_0]
-    axObj[1][0].plot(featureRocRec[2][index_1_0][1],
-                     featureRocRec[2][index_1_0][2],
-                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_1_0]),
-                     lw=lw)
-    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
-        axObj[1][0].plot(rocRec_ind[2][index_1_0][1],
-                         rocRec_ind[2][index_1_0][2],
-                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_1_0]),
-                         lw=lw)
-    axObj[1][0].legend(fontsize=8)
-    axObj[1][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-    
-    # 80(25)
-    index_1_1 = 80
-    pts = pts_index[index_1_1]
-    axObj[1][1].plot(featureRocRec[2][index_1_1][1],
-                     featureRocRec[2][index_1_1][2],
-                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_1_1]),
-                     lw=lw)
-    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
-        axObj[1][1].plot(rocRec_ind[2][index_1_1][1],
-                         rocRec_ind[2][index_1_1][2],
-                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_1_1]),
-                         lw=lw)
-    axObj[1][1].legend(fontsize=8)
-    axObj[1][1].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-    
-    for obj in axObj.ravel():
-        obj.grid(False)
-        obj.set_xlim(0, 1)
-        obj.set_ylim(0, )
-    plt.tight_layout()    
-    
-    if plotSave == True:
-        plt.savefig(".//Plots//roc_curve_different_rep.png", dpi=500, bbox_inches="tight")
+#    plt.close("all")
+#    fig, axObj = plt.subplots(2, 2, figsize=(12, 9))
+#    pts_index = [i for i in range(5, 250, 3)]
+#    lw = 2
+#    axObj[0][0].plot(featureRocRec[2][featureRocBestInd][1],
+#                     featureRocRec[2][featureRocBestInd][2],
+#                     label='FeatureBased(auc={:.3f})'.format(featureRocBest),
+#                     lw=lw)    
+#    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
+#        axObj[0][0].plot(rocRec_ind[2][rocBestInd_ind][1],
+#                         rocRec_ind[2][rocBestInd_ind][2],
+#                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocBest_ind),
+#                         lw=lw)
+#    axObj[0][0].legend(fontsize=8)
+#    axObj[0][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+#    
+#    # 29(8)
+#    index_0_1 = 30
+#    pts = pts_index[index_0_1]
+#    axObj[0][1].plot(featureRocRec[2][index_0_1][1],
+#                     featureRocRec[2][index_0_1][2],
+#                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_0_1]),
+#                     lw=lw)
+#    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
+#        axObj[0][1].plot(rocRec_ind[2][index_0_1][1],
+#                         rocRec_ind[2][index_0_1][2],
+#                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_0_1]),
+#                         lw=lw)
+#    axObj[0][1].legend(fontsize=8)
+#    axObj[0][1].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+#
+#    # 59(18)
+#    index_1_0 = 50
+#    pts = pts_index[index_1_0]
+#    axObj[1][0].plot(featureRocRec[2][index_1_0][1],
+#                     featureRocRec[2][index_1_0][2],
+#                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_1_0]),
+#                     lw=lw)
+#    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
+#        axObj[1][0].plot(rocRec_ind[2][index_1_0][1],
+#                         rocRec_ind[2][index_1_0][2],
+#                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_1_0]),
+#                         lw=lw)
+#    axObj[1][0].legend(fontsize=8)
+#    axObj[1][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+#    
+#    # 80(25)
+#    index_1_1 = 80
+#    pts = pts_index[index_1_1]
+#    axObj[1][1].plot(featureRocRec[2][index_1_1][1],
+#                     featureRocRec[2][index_1_1][2],
+#                     label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][index_1_1]),
+#                     lw=lw)
+#    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
+#        axObj[1][1].plot(rocRec_ind[2][index_1_1][1],
+#                         rocRec_ind[2][index_1_1][2],
+#                         label='Rep_' + str(ind) + '(auc={:.3f})'.format(rocRec_ind[1][index_1_1]),
+#                         lw=lw)
+#    axObj[1][1].legend(fontsize=8)
+#    axObj[1][1].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+#    
+#    for obj in axObj.ravel():
+#        obj.grid(False)
+#        obj.set_xlim(0, 1)
+#        obj.set_ylim(0, )
+#    plt.tight_layout()    
+#    
+#    if plotSave == True:
+#        plt.savefig(".//Plots//roc_curve_different_rep.png", dpi=500, bbox_inches="tight")

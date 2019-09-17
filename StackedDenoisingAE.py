@@ -416,7 +416,13 @@ class StackedDenoisingAE(object):
                                                       n_out=self.n_hid[cur_layer],
                                                       batch_size=self.batch_size)
             # -----------------------------------------
-
+            
+            # Normalization
+            X_sc = MinMaxScaler()
+            data_in = X_sc.fit_transform(data_in)
+            data_val = X_sc.fit_transform(data_val)
+            data_test = X_sc.fit_transform(data_test)
+            
         # Write down some important parameters information in **.txt form.
         self._write_sda_config(dir_out)
         

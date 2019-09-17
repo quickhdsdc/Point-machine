@@ -49,6 +49,25 @@ if __name__ == "__main__":
     ###############################################################################
     ###############################################################################
     plt.close("all")
+    
+    components = 2
+    featureTmp = features.copy()
+    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
+    X_sc = StandardScaler()
+    for name in featureTmp.columns:
+        featureTmp[name].fillna(featureTmp[name].mean(), inplace=True)
+        featureTmp[name] = X_sc.fit_transform(featureTmp[name].values.reshape(len(featureTmp), 1))
+    pca = KernelPCA(n_components=components, kernel='rbf')
+    featuresPCA = pca.fit_transform(featureTmp.values)
+    varRemain = pca.lambdas_
+    print("\n@Number of features {}, after compression {}.".format(features.shape[1], components))
+    print("@Information reamins : {}".format(sum(varRemain)))    
+    
+    g = sns.jointplot(x=featuresPCA[:, 0], y=featuresPCA[:, 1], kind="kde", color="b")
+    g.plot_joint(plt.scatter, c="r", s=30, linewidth=1, marker="+")
+    g.ax_joint.collections[0].set_alpha(0)
+    g.set_axis_labels("$X$", "$Y$");
+    
     '''
     Step 1: Plot random n signals, seems there are only 3 class in this set
     '''
@@ -182,8 +201,8 @@ if __name__ == "__main__":
 #    varRemain = pca.lambdas_
 #    print("\n@Number of features {}, after compression {}.".format(features.shape[1], components))
 #    print("@Information reamins : {}".format(sum(varRemain)))
-#    
-#    # Factor color plot
+    
+    # Factor color plot
 #    f, axObj = plt.subplots(2, 3, figsize=(16, 9))
 #    for ax, noiseLevel, noiseLabels in zip(axObj.ravel(), clfNoiseLevel, clfNoiseLabel):
 #        ax.scatter(featuresPCA[:, 0], featuresPCA[:, 1], c="b",
@@ -200,8 +219,25 @@ if __name__ == "__main__":
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
-#        
-#    # Non-color plot
+#
+#    # xxxx plot
+#    f, axObj = plt.subplots(2, 3, figsize=(16, 9))
+#    for ax, noiseLevel, noiseLabels in zip(axObj.ravel(), clfNoiseLevel, clfNoiseLabel):
+#        ax.scatter(featuresPCA[:, 0][noiseLabels != -1], featuresPCA[:, 1][noiseLabels != -1], c="b",
+#                   marker=".", s=15, label="Normal")
+#        area = (- noiseLevel[noiseLabels == -1]) * 20
+#        ax.scatter(featuresPCA[:, 0][noiseLabels == -1], featuresPCA[:, 1][noiseLabels == -1], s=15, c="r", marker="x")
+#        ax.tick_params(axis="y", labelsize=10)
+#        ax.tick_params(axis="x", labelsize=10)
+#    plt.tight_layout()
+#
+#    if plotSave:
+#        plt.savefig(".//Plots//0_EDA_pca_features_xxx.png", dpi=500, bbox_inches="tight")
+#        plt.close("all")
+#    if not plotShow:
+#        plt.close("all")
+        
+    # Non-color plot
 #    f, axObj = plt.subplots(2, 3, figsize=(16, 9))
 #    for ax, noiseLevel, noiseLabels in zip(axObj.ravel(), clfNoiseLevel, clfNoiseLabel):
 #        ax.scatter(featuresPCA[:, 0][noiseLabels == 1],
@@ -217,7 +253,7 @@ if __name__ == "__main__":
 #    if not plotShow:
 #        plt.close("all")
         
-    # Colored by the ground truth
+#    # Colored by the ground truth
 #    f, ax = plt.subplots(figsize=(8, 6))
 #    uniqueLabels = -np.sort(-groundTruth["label"].unique())
 #    for ind, label in enumerate(uniqueLabels):
@@ -425,7 +461,7 @@ if __name__ == "__main__":
 #        ax.set_xticklabels([round(i, 2) for i in params["nu"]])
 #        ax.set_yticklabels([round(i, 2) for i in params["gamma"]])
 #        cbar = ax.collections[0].colorbar
-#        cbar.ax.tick_params(labelsize=7)    
+#        cbar.ax.tick_params(labelsize=7)
 #    plt.tight_layout()
 #    
 #    if plotSave:

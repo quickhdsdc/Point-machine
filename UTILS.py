@@ -15,6 +15,7 @@ import pickle
 from functools import wraps
 import pandas as pd
 from datetime import datetime
+from tqdm import tqdm
 
 from StackedDenoisingAE import StackedDenoisingAE
 from sklearn.model_selection import StratifiedKFold, KFold
@@ -33,6 +34,7 @@ def save_data(data, fileName=None):
     print("Save successed !")
     print("-------------------------------------")
 
+
 def load_data(fileName=None):
     assert fileName, "Invalid file name !"
     print("-------------------------------------")
@@ -44,15 +46,17 @@ def load_data(fileName=None):
     print("-------------------------------------")
     return data
 
+
 def timefn(fn):
     @wraps(fn)
     def measure_time(*args, **kwargs):
         start = time.time()
         result = fn(*args, **kwargs)
         end = time.time()
-        print("@timefn: " + fn.__name__ + " took {:5f}".format(end-start) + " seconds")
+        print("@timefn: " + fn.__name__ + " took {:.5f}".format(end-start) + " seconds")
         return result
     return measure_time
+
 
 @timefn
 def replace_inf_with_nan(data):
@@ -60,6 +64,7 @@ def replace_inf_with_nan(data):
     for name in featureNameList:
         data[name].replace([np.inf, -np.inf], np.nan, inplace=True)
     return data
+
 
 @timefn
 def basic_feature_report(data):
@@ -77,12 +82,14 @@ def basic_feature_report(data):
     basicReport = pd.merge(basicReport, dataDescribe, on='featureName', how='left')
     return basicReport
 
+
 def drop_most_empty_features(data=None, precent=None):
     assert precent, "@MichaelYin: Invalid missing precent !"
     dataReport = basic_feature_report(data)
     featureName = list(dataReport["featureName"][dataReport["missingPrecent"] >= precent].values)
     data.drop(featureName, axis=1, inplace=True)
     return data, featureName
+
 
 def plot_single_record(data=[], record=0):
     if len(data) == 0:
@@ -104,7 +111,6 @@ def plot_single_record(data=[], record=0):
     
 ###############################################################################
 ###############################################################################
-
 class LoadSave(object):
     def __init__(self, fileName=None):
         self._fileName = fileName
@@ -146,7 +152,8 @@ class LoadSave(object):
         return data
 ###############################################################################
 ###############################################################################
-def generating_cutted_sequences(data=[], window=20, stride=10, portion=0.4, verboseRound=500):
+def generating_cutted_sequences(data=[], window=20, stride=10,
+                                portion=0.4, verboseRound=500):
     '''
     data: list-like
         Each element in the data is a list which contains points of sequences.
@@ -154,7 +161,7 @@ def generating_cutted_sequences(data=[], window=20, stride=10, portion=0.4, verb
     if len(data) == 0:
         return None
     
-    print("@Michael Yin: Start cutting sequences")
+    print("\n@Michael Yin: Start cutting sequences")
     print("=====================================================")
     print("Start time : {}".format(datetime.now()))
     cuttedSeqs = []
@@ -165,6 +172,50 @@ def generating_cutted_sequences(data=[], window=20, stride=10, portion=0.4, verb
     print("End time : {}".format(datetime.now()))
     print("=====================================================")
     return cuttedSeqs
+
+
+def generating_equal_sequences(data=[], padding_val=0,
+                               mode="max_length", length=None):
+    '''
+    data: list-like
+        Each element in the data is a list which contains points of sequences.
+    '''
+    if len(data) == 0:
+        return None
+    
+    if not isinstance(data, list):
+        raise TypeError("Invalid data type !")
+    
+    if mode not in ["max_length", "min_length", "pre_defined", "mean_length"]:
+        raise TypeError("Invalid mode !")
+    
+    if mode == "pre_defined" and length is None:
+        raise TypeError("Invalid length param !")
+        
+    if mode == "max_length":
+        length = max([len(i) for i in data])
+    elif mode == "min_length":
+        length = min([len(i) for i in data])
+    elif mode == "mean_length":
+        length = int(round(sum([len(i) for i in data]) / len(data)))
+    
+    print("\n@Michael Yin: Start padding sequences")
+    print("=====================================================")
+    print("@Start time : {}".format(datetime.now()))
+    paddingRes, lengthDiffSum, processNumsSum = [], [], 0
+    for i in tqdm(range(len(data))):
+        seq = data[i]
+        segRes, lengthDiff, processNums = sequence_to_padding_sequence(seq, padding_val=padding_val, length=length)
+        
+        paddingRes.append(segRes)
+        lengthDiffSum.append(lengthDiff)
+        processNumsSum += processNums
+    print("@End time : {}".format(datetime.now()))
+    if processNumsSum:
+        print("@Process nums {}, average process pts {:.3f}, length is {}.".format(processNumsSum,
+              sum(lengthDiffSum)/processNumsSum, length))
+    print("=====================================================")
+    return paddingRes
 
 
 def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
@@ -196,7 +247,6 @@ def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
     ----------
     segRes: dict-like,
             cuttting results. It acts like: {0: [[cutted seq], [mean], [var]], ...}
-        
     '''
     if len(seq) <= window:
         return {0:[[seq], [np.mean(seq)], [np.var(seq)]]}
@@ -219,8 +269,54 @@ def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
     for ind, item in enumerate(segmentPoints):
         tmp = seq[item:(item+window)]
         segRes[ind] = [tmp, np.mean(tmp), np.var(tmp), remainPts/len(seq)]
-    
     return segRes
+
+
+def sequence_to_padding_sequence(seq=[], padding_val=0, length=None):
+    '''
+    ----------
+    Author: Michael Yin
+    Date: 2019/09/13
+    Modified: 2019/09/13
+    Mail: zhuoyin94@163.com
+    ----------
+    
+    @Description:
+    ----------
+    padding the sequence to the equal length.
+    
+    @Parameters:
+    ----------
+    seq: list-like
+        A sequence need to be padded.
+    
+    padding_val: float-like
+        Value that used to padding.
+    
+    length: int-like
+        Show the process.
+        
+    @Return:
+    ----------
+    paddingRes: list-like,
+            Padding results: [paddingSea, mean(paddingSea), var(paddingSea), None]
+    '''
+    if len(seq) > length:
+        tmp = seq[:length].copy()
+        lengthDiff = (len(seq) - length)
+        processNums = 1
+        
+    elif len(seq) < length:
+        needToPadPtsNum = length - len(seq)
+        tmp = seq + [padding_val] * needToPadPtsNum
+        lengthDiff = (length - len(seq))
+        processNums = 1
+        
+    else:
+        tmp = seq.copy()
+        lengthDiff = 0
+        processNums = 0
+    return {0:[tmp, np.mean(tmp), np.var(tmp), None]}, lengthDiff, processNums
 
 ###############################################################################
 ###############################################################################
@@ -543,42 +639,11 @@ def simple_lgb_clf(X_train, X_valid, X_test, y_train, y_valid, y_test, name="den
     clf.fit(X_train, y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=100, eval_metric="softmax")
     y_pred = clf.predict_proba(X_test)
     Y_test = to_categorical(y_test, len(np.unique(y_train)))
-    auc = roc_auc_curve(Y_test, y_pred, name=name)
+    auc = plot_roc_auc_curve(Y_test, y_pred, name=name)
     return auc
 
 ###############################################################################
 ###############################################################################
-def get_dae_rep(trainData=None, vaildData=None, segRes=None,
-                windowSize=None, stride=None,
-                weight_regularizer=[], activity_regularizer=[],
-                n_hid=[20], dropout=[0.02], enc_act=["relu"], nb_epoch=80,
-                batch_size=256, early_stop_rounds=15, 
-                path=".//Data//rep_data//", fileName="rep_0", save_rep=False):
-    
-    # Check the parameters
-    if windowSize is None or stride == None:
-        return
 
-    sdae = StackedDenoisingAE(n_layers=len(n_hid), n_hid=n_hid, dropout=dropout,
-                              weight_regularizer=weight_regularizer,
-                              activity_regularizer=activity_regularizer,
-                              nb_epoch=nb_epoch, enc_act=["relu"],
-                              early_stop_rounds=early_stop_rounds, dec_act=["linear"],
-                              batch_size=batch_size, bias=True)
-    model, (dense_train, dense_val, dense_test), recon_mse = sdae.get_pretrained_sda(trainData, vaildData,
-           vaildData, dir_out='.//Models//', write_model=False)
-
-    # Combining the subsequences into a single sequence
-    newData = np.concatenate([dense_train, dense_test], axis=0)
-    newData = pd.DataFrame(newData)
-    newData["flag"] = segRes["ind"]
-    signalRep = newData.groupby(["flag"]).mean().values
-
-    # Save the data
-    if save_rep:
-        ls = LoadSave(path + fileName + "_" + str(windowSize) + "_"
-                      + str(stride) + ".pkl")
-        ls.save_data(signalRep)
-    return signalRep
 
 
