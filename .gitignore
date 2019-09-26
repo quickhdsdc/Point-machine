@@ -1,0 +1,5 @@
+# NO .pkl data
+*.pkl
+
+# No .png files.
+*.png

@@ -644,6 +644,32 @@ def simple_lgb_clf(X_train, X_valid, X_test, y_train, y_valid, y_test, name="den
 
 ###############################################################################
 ###############################################################################
-
-
-
+def weighting_rep(df=[], norm_factor=0.05, bin_name="bin_freq_10"):
+    if len(df) == 0:
+        return None
+    if bin_name not in df.columns:
+        raise TypeError("Bin name not in the df !")
+    
+    # Preparing the reweighting
+    repTs = df[[name for name in df.columns if "rep" in name]]
+    segRes = df[[name for name in df.columns if "rep" not in name]]
+    
+    # Weights
+    #----------------------------------------------------
+    segRes["weights"] = 2 / (1 + np.exp(norm_factor * segRes[bin_name].values))
+    #----------------------------------------------------
+    
+    weightsNorm = segRes.groupby(["ind"])["weights"].sum().reset_index().rename({"weights":"norm_factor"}, axis=1)
+    segRes = pd.merge(segRes, weightsNorm, how="left", on="ind")
+    segRes["weights_norm"] = segRes["weights"] / segRes["norm_factor"]
+    
+    # Reweighting
+    signalRep_weight = repTs.multiply(segRes["weights_norm"].values, axis=0).copy()
+    signalRep_weight["flag"] = segRes["ind"]
+    signalRep_weight = signalRep_weight.groupby(["flag"]).mean().values
+    
+    # Non-weighting
+    repTs["ind"] = segRes["ind"].values
+    signalRep_mean = repTs.groupby(["ind"]).mean().values
+    
+    return signalRep_mean, signalRep_weight

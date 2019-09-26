@@ -27,6 +27,7 @@ warnings.filterwarnings('ignore')
 
 from UTILS import ReduceMemoryUsage, LoadSave, basic_feature_report, plot_single_record
 np.random.seed(2019)
+markers = ["s", "^", "o", "d", "*", "<", ">", "h", "p"]
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 mpl.rcParams["font.family"] = "Times New Roman"
 ###############################################################################
@@ -50,23 +51,50 @@ if __name__ == "__main__":
     ###############################################################################
     plt.close("all")
     
-    components = 2
-    featureTmp = features.copy()
-    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
-    X_sc = StandardScaler()
-    for name in featureTmp.columns:
-        featureTmp[name].fillna(featureTmp[name].mean(), inplace=True)
-        featureTmp[name] = X_sc.fit_transform(featureTmp[name].values.reshape(len(featureTmp), 1))
-    pca = KernelPCA(n_components=components, kernel='rbf')
-    featuresPCA = pca.fit_transform(featureTmp.values)
-    varRemain = pca.lambdas_
-    print("\n@Number of features {}, after compression {}.".format(features.shape[1], components))
-    print("@Information reamins : {}".format(sum(varRemain)))    
+    # Some new plot
+#    components = 2
+#    featureTmp = features.copy()
+#    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
+#    X_sc = StandardScaler()
+#    for name in featureTmp.columns:
+#        featureTmp[name].fillna(featureTmp[name].mean(), inplace=True)
+#        featureTmp[name] = X_sc.fit_transform(featureTmp[name].values.reshape(len(featureTmp), 1))
+#    pca = KernelPCA(n_components=components, kernel='rbf')
+#    featuresPCA = pca.fit_transform(featureTmp.values)
+#    varRemain = pca.lambdas_
+#    print("\n@Number of features {}, after compression {}.".format(features.shape[1], components))
+#    print("@Information reamins : {}".format(sum(varRemain)))    
+#    
+#    g = sns.jointplot(x=featuresPCA[:, 0], y=featuresPCA[:, 1], kind="kde", color="b")
+#    g.plot_joint(plt.scatter, c="r", s=30, linewidth=1, marker="+")
+#    g.ax_joint.collections[0].set_alpha(0)
+#    g.set_axis_labels("$X$", "$Y$")
+    '''
+    Step 0: Plot 4 typical noisy signal.
     
-    g = sns.jointplot(x=featuresPCA[:, 0], y=featuresPCA[:, 1], kind="kde", color="b")
-    g.plot_joint(plt.scatter, c="r", s=30, linewidth=1, marker="+")
-    g.ax_joint.collections[0].set_alpha(0)
-    g.set_axis_labels("$X$", "$Y$");
+    '''
+#    fig, axObj = plt.subplots(1, 4, figsize=(16, 3))
+#    noiseInd = [i for i in list(features.index) if groundTruth["label"].loc[i] == -1]
+#    noiseTs = [ts[i] for i in noiseInd]
+#    noiseFeatures = features[groundTruth["label"] == -1]
+#    # Noise 0: Almost zero mean.
+#    # Noise 1: 
+#    
+#    noiseInd_0, noiseInd_1, noiseInd_2, noiseInd_3 = 2421, 1648, 321, 260
+#    allNoise = [noiseInd_0, noiseInd_1, noiseInd_2, noiseInd_3]
+#    
+#    for ax, ind in zip(axObj.ravel(), allNoise):
+#        ax.plot(ts[ind], linewidth=2, color="k")
+#        ax.tick_params(axis="both", labelsize=8)
+#        ax.set_ylim(0, 7)
+#        ax.set_xlim(0, len(ts[ind]))
+#    plt.tight_layout()
+#
+#    if plotSave:
+#        plt.savefig(".//Plots//0_EDA_plot_4_fault.pdf", dpi=500, bbox_inches="tight")
+#        plt.close("all")
+#    if not plotShow:
+#        plt.close("all")
     
     '''
     Step 1: Plot random n signals, seems there are only 3 class in this set
@@ -90,7 +118,7 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_plot_random_n_signal.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_plot_random_n_signal.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -98,7 +126,7 @@ if __name__ == "__main__":
     '''
     Step 2: Heatmap of all features.
     '''    
-    # Features heatmap
+#    # Features heatmap
 #    featureTmp = features.copy()
 #    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
 #    featureCorr = featureTmp.corr()
@@ -119,7 +147,7 @@ if __name__ == "__main__":
 #    cbar.ax.tick_params(labelsize=10)
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_heatmap_original_features.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_heatmap_original_features.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -134,7 +162,7 @@ if __name__ == "__main__":
 #    ax.tick_params(axis="both", labelsize=8)
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_boxplot_features.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_boxplot_features.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -163,27 +191,27 @@ if __name__ == "__main__":
 #    noiseLabels_0 = clf_0.fit_predict(featuresPCA)
 #    noiseLevel_0 = clf_0.negative_outlier_factor_
 #
-#    clf_1 = LocalOutlierFactor(n_neighbors=10, metric="euclidean",
+#    clf_1 = LocalOutlierFactor(n_neighbors=40, metric="euclidean",
 #                               contamination=0.08, n_jobs=1)
 #    noiseLabels_1 = clf_1.fit_predict(featuresPCA)
 #    noiseLevel_1 = clf_1.negative_outlier_factor_
 #
-#    clf_2 = LocalOutlierFactor(n_neighbors=100, metric="euclidean",
+#    clf_2 = LocalOutlierFactor(n_neighbors=80, metric="euclidean",
 #                               contamination=0.08, n_jobs=1)
 #    noiseLabels_2 = clf_2.fit_predict(featuresPCA)
 #    noiseLevel_2 = clf_2.negative_outlier_factor_
 #    
-#    clf_3 = LocalOutlierFactor(n_neighbors=300, metric="euclidean",
+#    clf_3 = LocalOutlierFactor(n_neighbors=150, metric="euclidean",
 #                               contamination=0.08, n_jobs=1)
 #    noiseLabels_3 = clf_3.fit_predict(featuresPCA)
 #    noiseLevel_3 = clf_3.negative_outlier_factor_
 #    
-#    clf_4 = LocalOutlierFactor(n_neighbors=500, metric="euclidean",
+#    clf_4 = LocalOutlierFactor(n_neighbors=300, metric="euclidean",
 #                               contamination=0.08, n_jobs=1)
 #    noiseLabels_4 = clf_4.fit_predict(featuresPCA)
 #    noiseLevel_4 = clf_4.negative_outlier_factor_
 #
-#    clf_5 = LocalOutlierFactor(n_neighbors=1000, metric="euclidean",
+#    clf_5 = LocalOutlierFactor(n_neighbors=500, metric="euclidean",
 #                               contamination=0.08, n_jobs=1)
 #    noiseLabels_5 = clf_5.fit_predict(featuresPCA)
 #    noiseLevel_5 = clf_5.negative_outlier_factor_
@@ -201,8 +229,8 @@ if __name__ == "__main__":
 #    varRemain = pca.lambdas_
 #    print("\n@Number of features {}, after compression {}.".format(features.shape[1], components))
 #    print("@Information reamins : {}".format(sum(varRemain)))
-    
-    # Factor color plot
+#    
+#    # Factor color plot
 #    f, axObj = plt.subplots(2, 3, figsize=(16, 9))
 #    for ax, noiseLevel, noiseLabels in zip(axObj.ravel(), clfNoiseLevel, clfNoiseLabel):
 #        ax.scatter(featuresPCA[:, 0], featuresPCA[:, 1], c="b",
@@ -215,7 +243,7 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_pca_features_area.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_pca_features_area.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -232,27 +260,28 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_pca_features_xxx.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_pca_features_xxx.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
-        
-    # Non-color plot
+#        
+#    # Non-color plot
 #    f, axObj = plt.subplots(2, 3, figsize=(16, 9))
 #    for ax, noiseLevel, noiseLabels in zip(axObj.ravel(), clfNoiseLevel, clfNoiseLabel):
 #        ax.scatter(featuresPCA[:, 0][noiseLabels == 1],
-#                   featuresPCA[:, 1][noiseLabels == 1], color="b", marker=".", label="Normal")
+#                   featuresPCA[:, 1][noiseLabels == 1], color="b", marker=".",
+#                   label="Normal", s=9)
 ##        ax.grid(True)
-#        ax.tick_params(axis="y", labelsize=10)
-#        ax.tick_params(axis="x", labelsize=10)
+#        ax.tick_params(axis="y", labelsize=8)
+#        ax.tick_params(axis="x", labelsize=8)
 #    plt.tight_layout()
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_pca_features.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_pca_features.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
-        
+#        
 #    # Colored by the ground truth
 #    f, ax = plt.subplots(figsize=(8, 6))
 #    uniqueLabels = -np.sort(-groundTruth["label"].unique())
@@ -262,21 +291,21 @@ if __name__ == "__main__":
 #        
 #        coords = featuresPCA[labeledSampleIndex, :]
 #        if label != -1:
-#            ax.scatter(coords[:, 0], coords[:, 1], s=10, 
+#            ax.scatter(coords[:, 0], coords[:, 1], s=9, 
 #                       color='b', marker=".")
 #        else:
-#            ax.scatter(coords[:, 0], coords[:, 1], s=10, 
+#            ax.scatter(coords[:, 0], coords[:, 1], s=9, 
 #                       color='r', marker="x", label="Class Abnormal")    
-#        ax.tick_params(axis="y", labelsize=10)
-#        ax.tick_params(axis="x", labelsize=10)
-#    plt.legend(fontsize=10)
+#        ax.tick_params(axis="y", labelsize=8)
+#        ax.tick_params(axis="x", labelsize=8)
+#    plt.legend(fontsize=8)
 #
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_pca_2d_colored_by_truth.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_pca_2d_colored_by_truth.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
-    
+#    
     '''
     Step 5: Date time based features visualizing.
     '''
@@ -304,11 +333,11 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #    
 #    if plotSave:
-#        f.savefig(".//Plots//0_EDA_catplot.png", dpi=500, bbox_inches="tight")
+#        f.savefig(".//Plots//0_EDA_catplot.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
-    
+#    
     '''
     Step 6: Find the abnormal seq in segment_1.
     '''
@@ -336,7 +365,7 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_seg_features_3d.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_seg_features_3d.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -367,7 +396,7 @@ if __name__ == "__main__":
 #    print("@Information reamins : {}".format(sum(varRemain)))
 #    
 #    # Visualizing the ground truth of the data in feature space
-#    fig, axObj = plt.subplots(1, 2, figsize=(10, 4))
+#    fig, axObj = plt.subplots(1, 2, figsize=(13, 4))
 #    uniqueTrueLabels = [1, 2, 3, -1]
 #    
 #    for ind, label in enumerate(uniqueTrueLabels):
@@ -377,15 +406,15 @@ if __name__ == "__main__":
 #        coordPCA = featuresPCA[labeledSampleIndex, :]
 #        coordKPCA = featuresKPCA[labeledSampleIndex, :]
 #        if label == -1:
-#            axObj[0].scatter(coordPCA[:, 0], coordPCA[:, 1],
-#                 color=colors[ind], marker="x", label="Class " + str(int(label)), s=10)
-#            axObj[1].scatter(coordKPCA[:, 0], coordKPCA[:, 1],
-#                 color=colors[ind], marker="x", label="Class " + str(int(label)), s=10)
+#            axObj[0].scatter(coordPCA[:, 0], coordPCA[:, 1], s=9, alpha=0.4,
+#                 color=colors[ind], marker="x", label="Class Abnormal")
+#            axObj[1].scatter(coordKPCA[:, 0], coordKPCA[:, 1], s=9, alpha=0.4,
+#                 color=colors[ind], marker="x", label="Class Abnormal")
 #        else:
-#            axObj[0].scatter(coordPCA[:, 0], coordPCA[:, 1],
-#                 color=colors[ind], marker=".", label="Class " + str(int(label)), s=10)
-#            axObj[1].scatter(coordKPCA[:, 0], coordKPCA[:, 1],
-#                 color=colors[ind], marker=".", label="Class " + str(int(label)), s=10)
+#            axObj[0].scatter(coordPCA[:, 0], coordPCA[:, 1], s=9, alpha=0.4,
+#                 color=colors[ind], marker=markers[ind], label="Class " + str(int(label)))
+#            axObj[1].scatter(coordKPCA[:, 0], coordKPCA[:, 1], s=9, alpha=0.4,
+#                 color=colors[ind], marker=markers[ind], label="Class " + str(int(label)))
 #        axObj[0].tick_params(axis="y", labelsize=8)
 #        axObj[0].tick_params(axis="x", labelsize=8)
 #        axObj[1].tick_params(axis="y", labelsize=8)
@@ -394,7 +423,7 @@ if __name__ == "__main__":
 #        axObj[0].legend(fontsize=7)
 #        axObj[1].legend(fontsize=7)
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_ground_truth_pca_kpca_figure.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_ground_truth_pca_kpca_figure.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -403,7 +432,7 @@ if __name__ == "__main__":
     Step 7: OCSVM-features based anomaly detection.(Proving the feature based 
     anomaly detection has no effect for this problem.)
     '''
-    # Standardizing the data
+#    # Standardizing the data
 #    featureTmp = features.copy()
 #    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
 #    X_sc = StandardScaler()
@@ -451,7 +480,7 @@ if __name__ == "__main__":
 #    fig, axObj = plt.subplots(1, 2, figsize=(10, 4))
 #    for ind, (ax, featureCorr) in enumerate(zip(axObj, [pca_mat, kpca_mat])):
 #        ax = sns.heatmap(featureCorr, xticklabels=1, yticklabels=1,
-#                         cmap="Blues", fmt='.2f', annot=True,
+#                         cmap="Blues", fmt='.3f', annot=True,
 #                         annot_kws={'size':5.5,'weight':'bold'}, ax=ax)
 #        ax.tick_params(axis="y", labelsize=7, rotation=0)
 #        ax.tick_params(axis="x", labelsize=7)
@@ -465,7 +494,7 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_ocsvm_detection_heatmap.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_ocsvm_detection_heatmap.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -497,7 +526,7 @@ if __name__ == "__main__":
 #    print("@Information reamins : {}".format(sum(varRemain)))
 #
 #    # Detecting the anomaly data according to the features
-#    test_param_nums = 50
+#    test_param_nums = 15
 #    params = {"nn":np.sort(np.random.choice([i for i in range(2, 700)], test_param_nums, replace=False))}
 #    pca_mat = np.zeros((test_param_nums, 1))
 #    kpca_mat = np.zeros((test_param_nums, 1))
@@ -546,7 +575,7 @@ if __name__ == "__main__":
 #    plt.ylabel("AUC", fontsize=8)
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_lof_detection_heatmap.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_lof_detection_heatmap.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
@@ -639,7 +668,7 @@ if __name__ == "__main__":
 #    plt.tight_layout()
 #    
 #    if plotSave:
-#        plt.savefig(".//Plots//0_EDA_feature_based_clustering_heatmap.png", dpi=500, bbox_inches="tight")
+#        plt.savefig(".//Plots//0_EDA_feature_based_clustering_heatmap.pdf", dpi=500, bbox_inches="tight")
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
