@@ -19,7 +19,8 @@ from tqdm import tqdm
 
 from StackedDenoisingAE import StackedDenoisingAE
 from sklearn.model_selection import StratifiedKFold, KFold
-import lightgbm as lgb
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 ###############################################################################
@@ -470,7 +471,7 @@ class ReduceMemoryUsage():
                     if featureMin > np.finfo(np.float32).min and featureMax < np.finfo(np.float32).max:
                         self._data[name] = self._data[name].astype(np.float32)
                     else:
-                        self._data[name] = self._data[name].astype(np.float64)    
+                        self._data[name] = self._data[name].astype(np.float64)
                 except Exception as error:
                     print("\n--------ERROR INFORMATION---------")
                     print(error)
@@ -480,67 +481,12 @@ class ReduceMemoryUsage():
                 print("Processed {} feature({}), total is {}.".format(ind+1, name, len(self._types)))
         memoryEnd = self._data.memory_usage(deep=True).sum() / 1024**2
         if self._verbose == True:
-            print("@Memory usage after optimization: {:5f} MB.".format(memoryEnd))
-            print("@Decreased by {}%".format(100 * (memoryStart - memoryEnd) / memoryStart))
+            print("@Memory usage after optimization: {:.5f} MB.".format(memoryEnd))
+            print("@Decreased by {}%.".format(100 * (memoryStart - memoryEnd) / memoryStart))
         print("-------------------------------------------")
 
 ###############################################################################
 ###############################################################################
-def lgb_clf_training(train, test, lgbParams=None, numFolds=3, stratified=True,
-                     shuffle=True, randomState=2812):
-    # Specify the cross validated method
-    if stratified == True:
-        folds = StratifiedKFold(n_splits=numFolds, shuffle=shuffle,
-                                random_state=randomState)
-    else:
-        folds = KFold(n_splits=numFolds, shuffle=shuffle, random_state=randomState)
-    
-    # Start training
-    dataTrain = train.drop("target", axis=1)
-    dataTrainLabel = train["target"]
-    importances = pd.DataFrame(None)
-    importances["featureName"] = list(train.drop(["target"], axis=1).columns)
-    score = np.zeros((numFolds, 4))
-    
-    ###########################################################################
-    for fold, (trainId, validationId) in enumerate(folds.split(dataTrain, dataTrainLabel)):
-        # iloc the split data
-        X_train, y_train = dataTrain.iloc[trainId], dataTrainLabel.iloc[trainId]
-        X_valid, y_valid = dataTrain.iloc[validationId], dataTrainLabel.iloc[validationId]
-        
-        # Start training
-        clf = lgb.LGBMClassifier(**lgbParams)
-        clf.fit(X_train.values, y_train.values, eval_set=[(X_train.values, y_train.values),
-                                                          (X_valid.values, y_valid.values)],
-                                                          early_stopping_rounds=20, eval_metric="auc")
-        importances["importances_" + str(fold)] = clf.feature_importances_
-        scoreTmp = clf.evals_result_
-        scoreKeys = list(scoreTmp.keys())
-        score[fold, 0] = fold
-        score[fold, 1] = scoreTmp[scoreKeys[0]]["auc"][clf.best_iteration_ - 1]
-        score[fold, 2] = scoreTmp[scoreKeys[1]]["auc"][clf.best_iteration_ - 1]
-        score[fold, 3] = clf.best_iteration_
-    score = pd.DataFrame(score, columns=["fold", "trainScore", "validScore", "bestIters"])
-    print("\n@Average score:")
-    print("==================================================================")
-    print("    ---Average train score {}".format(score["trainScore"].mean()))
-    print("    ---Average valid score {}".format(score["validScore"].mean()))
-    print("==================================================================")
-    
-    print("\n@Start the finall fit:")
-    print("==================================================================")
-    print("@Start time : {}".format(datetime.now()))
-    lgbParams["n_estimators"] = int(score["bestIters"].max())
-    clf = lgb.LGBMClassifier(**lgbParams)
-    clf.fit(dataTrain.values, dataTrainLabel.values)
-    importances["importances_finall"] = clf.feature_importances_
-    y_pred = clf.predict_proba(test.values)[:, 1]
-    print("@End time : {}".format(datetime.now()))
-    print("==================================================================")
-    
-    return score, importances, y_pred
-
-
 def plot_roc_auc_curve(y_test=None, y_pred=None, name="dense"):
     '''
     ----------
@@ -603,44 +549,79 @@ def plot_feature_importance(importances=[], topK=10):
     if len(importances) == 0:
         return None
     
-    imp = importances.mean(axis=1).reset_index().rename({"index":"featureName",
-                          0:"importances"}, axis=1)
-    imp.sort_values(by="importances", inplace=True, ascending=False)
+    if len(importances) < topK:
+        topK = len(importances)
     
-    plt.figure(figsize=(16, 9))
-    sns.barplot(x=imp["featureName"][:topK].apply(str).values, y=imp["importances"][:topK].values, palette="Blues")
+    imp_cols = [name for name in importances.columns if "importances" in name]
+    mean_importance = np.mean(importances[imp_cols].values, axis=1)
     
+    df = pd.DataFrame(None)
+    df["featureName"] = ["col_" + str(i) for i in importances["featureName"].values]
+    df["importances"] = mean_importance
+    df.sort_values(by="importances", inplace=True, ascending=False)
+    df.reset_index(drop=True, inplace=True)
+    
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax = sns.barplot(x="featureName",
+                     y="importances",
+                     data=df[:topK],
+                     palette="Blues_d",
+                     ax=ax, order=None)
+    ax.tick_params(axis="both", labelsize=10)
+    ax.set_xlabel("feature name", fontsize=10)
+    ax.set_ylabel("importances", fontsize=10)
 ###############################################################################
 ###############################################################################
-from keras.utils.np_utils import to_categorical
-from sklearn.metrics import roc_curve, auc
-def simple_lgb_clf(X_train, X_valid, X_test, y_train, y_valid, y_test, name="dense"):
-    '''
-    X_train, X_valid, X_test: numpy-array like.
-    y_train, y_valid, y_test: numpy-array like.
-    name: the roc curve picture name.
-    '''
-    lgbParams = {'n_estimators': 5000,
-                 'objective': 'multiclass',
-                 'boosting_type': 'gbdt',
-                 'n_jobs': -1,
-                 'learning_rate': 0.05,
-                 'num_leaves': 40, # important
-                 'max_depth': 8, # important
-                 # 'min_split_gain': 0,
-                 # 'min_child_samples': 20,
-                 'subsample': 0.8,
-                 'subsample_freq': 1,
-                 'colsample_bytree':0.8,
-                 'reg_alpha': 0.56154,
-                 'reg_lambda': 0.5735294,
-                 'silent': 1}
-    clf = lgb.LGBMClassifier(**lgbParams)
-    clf.fit(X_train, y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=100, eval_metric="softmax")
-    y_pred = clf.predict_proba(X_test)
-    Y_test = to_categorical(y_test, len(np.unique(y_train)))
-    auc = plot_roc_auc_curve(Y_test, y_pred, name=name)
-    return auc
+def rf_clf_training(train, test, rfParams=None, numFolds=3, stratified=True,
+                    shuffle=True, randomState=2019):
+    # Specify the cross validated method
+    if stratified == True:
+        folds = StratifiedKFold(n_splits=numFolds, shuffle=shuffle,
+                                random_state=randomState)
+    else:
+        folds = KFold(n_splits=numFolds, shuffle=shuffle, random_state=randomState)
+    
+    # Make oof predictions, test predictions
+    importances = pd.DataFrame(None)
+    importances["featureName"] = list(train.drop(["target"], axis=1).columns)
+    score = np.zeros((numFolds, 4))
+    
+    oof_pred = np.zeros((len(train), 1))
+    y_pred = np.zeros((len(test), ))
+    
+    # Start training
+    dataTrain, dataTrainLabel = train.drop("target", axis=1), train["target"]
+    ###########################################################################
+    for fold, (trainId, validationId) in enumerate(folds.split(dataTrain, dataTrainLabel)):
+        # iloc the split data
+        X_train, y_train = dataTrain.iloc[trainId].values, dataTrainLabel.iloc[trainId].values
+        X_valid, y_valid = dataTrain.iloc[validationId].values, dataTrainLabel.iloc[validationId].values
+        
+        # Start training
+        clf = RandomForestClassifier(**rfParams)
+        clf.fit(X_train, y_train)
+        
+        # Some of scores
+        importances["importances_" + str(fold)] = clf.feature_importances_
+        score[fold, 0] = fold
+        score[fold, 1] = roc_auc_score(y_train, clf.predict_proba(X_train)[:, 1])
+        score[fold, 2] = roc_auc_score(y_valid, clf.predict_proba(X_valid)[:, 1])
+        score[fold, 3] = clf.oob_score_
+        
+        # Get the oof_prediction and the test prediction results
+        oof_pred[validationId, 0] = clf.predict_proba(X_valid)[:, 1]
+        y_pred += clf.predict_proba(test.values)[:, 1] / numFolds
+                                    
+    score = pd.DataFrame(score, columns=["fold", "trainScore", "validScore", "oofScores"])
+    print("\n@Average score:")
+    print("==================================================================")
+    print("    ---Average train score {:.7f}.".format(score["trainScore"].mean()))
+    print("    ---Average valid score {:.7f}.".format(score["validScore"].mean()))
+    print("    ---CV score: {:.7f}.".format(roc_auc_score(train['target'].values, oof_pred)))
+    print("==================================================================")
+    
+    return score, importances, y_pred
+
 
 ###############################################################################
 ###############################################################################
@@ -654,7 +635,7 @@ def weighting_rep(df=[], norm_factor=0.05, bin_name="bin_freq_10"):
     repTs = df[[name for name in df.columns if "rep" in name]]
     segRes = df[[name for name in df.columns if "rep" not in name]]
     
-    # Weights
+    # Weights function
     #----------------------------------------------------
     segRes["weights"] = 2 / (1 + np.exp(norm_factor * segRes[bin_name].values))
     #----------------------------------------------------

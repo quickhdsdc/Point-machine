@@ -77,25 +77,6 @@ def feature_kernel_pca(features=[], n_components=10):
     
     return featuresPCA
 
-
-def yi_qi_shang(repList=[]):
-    if len(repList) < 2:
-        raise TypeError("Invalid rep data !")
-    
-    # Concatenate the time series
-    repTs = np.concatenate(repList, axis=1)
-    
-    # Train the dae rep
-    sdae = StackedDenoisingAE(n_layers=1, n_hid=[int(0.8 * repTs.shape[1])], dropout=[0.01],
-                              weight_regularizer=[l2(0.00001)],
-                              activity_regularizer=[None],
-                              nb_epoch=1000, enc_act=["tanh"],
-                              early_stop_rounds=200, dec_act=["linear"],
-                              batch_size=1024, bias=True)
-    model, (dense_train, dense_val, dense_test), recon_mse = sdae.get_pretrained_sda(repTs, repTs,
-           repTs, dir_out='.//Models//', write_model=False)
-
-    return dense_train
 ###############################################################################
 ###############################################################################
 if __name__ == "__main__":
@@ -106,64 +87,59 @@ if __name__ == "__main__":
 #    signal = {"current": ts}
 #    signal = pd.DataFrame(signal, columns=["current"])
 #    plotSave, plotShow = True, False
-#    ###############################################
-#    ###############################################
-#    '''
-#    Step 1: Load all DAE representations, and perform the anamoly detection.
-#    '''
-#    PATH = ".//Data//rep_data//"
-#    ls = LoadSave(PATH)
-#    fileName = os.listdir(PATH)
-#    
-#    # Get the representations
-#    fileNameAE = sorted([name for name in fileName if ("rnn" not in name) and ("base" not in name)])
-#    fileNameRNN = sorted([name for name in fileName if "rnn" in name])
-#    fileNameBase = sorted([name for name in fileName if "base" in name])
-#    
-#    # Get the representations
-#    load_all = True
-#    if load_all:
-#        featureRep = feature_kernel_pca(features=features.drop(["dateTime", "no"], axis=1), n_components=20)
-#        rep, repOriginal, repRNN, repBase = [], [], [], []
-#        for name in fileNameAE:
-#            df = ls.load_data(PATH + name)
-#            repOriginal.append(df.copy())
-#            rep.append(weighting_rep(df, norm_factor=0.05, bin_name="bin_freq_5"))
-#            
-#        for name in fileNameRNN:
-#            repRNN.append(ls.load_data(PATH + name))
-#        for name in fileNameBase:
-#            repBase.append(ls.load_data(PATH + name))
-#            repBase[-1] = repBase[-1][[name for name in repBase[-1].columns if "rep" in name]].values
-        
     ###############################################
     ###############################################
-    # Anamoly detection: select the best score
-    # Step ==> 10, 20, 30, neurons(20), windowSize(40)
-    #----------------------------------------------------
-    repList = [rep[19][0],  rep[32][0], repRNN[0], repRNN[1],
-               repBase[0], repBase[1], rep[19][1],  rep[32][1]]
-    repName = ["Average-40-40", "Average-20-20", "GRU-40[23]", "GRU-70[23]",
-               "DAE-80[12]", "SDAE-100-50[21]", "Weighted-40-40", "Weighted-20-20"]
+    '''
+    Step 1: Load all DAE representations, and perform the anamoly detection.
+    '''
+    PATH = ".//Data//rep_data//"
+    ls = LoadSave(PATH)
+    fileName = os.listdir(PATH)
     
-    # Step ==> 10, 20, 30, neurons(20), windowSize(40)
-    #----------------------------------------------------
-#    repList = [rep[60], rep[62], rep[64], 
-#               rep[61], rep[63], rep[65]]
+    # Get the representations
+    fileNameAE = sorted([name for name in fileName if ("rnn" not in name) and ("base" not in name)])
+    fileNameRNN = sorted([name for name in fileName if "rnn" in name])
+    fileNameBase = sorted([name for name in fileName if "base" in name])
+    
+    # Get the representations
+    load_all = False
+    if load_all:
+        featureRep = feature_kernel_pca(features=features.drop(["dateTime", "no"], axis=1), n_components=20)
+        rep, repOriginal, repRNN, repBase = [], [], [], []
+        for name in fileNameAE:
+            df = ls.load_data(PATH + name)
+            repOriginal.append(df.copy())
+            rep.append(weighting_rep(df, norm_factor=0.1, bin_name="bin_freq_10"))
+            
+        for name in fileNameRNN:
+            repRNN.append(ls.load_data(PATH + name))
+        for name in fileNameBase:
+            repBase.append(ls.load_data(PATH + name))
+            repBase[-1] = repBase[-1][[name for name in repBase[-1].columns if "rep" in name]].values
+        
+#    ###############################################
+#    ###############################################
+#    # Anamoly detection: select the best score
+#    # Step ==> 10, 20, 30, neurons(20), windowSize(40)
+#    #----------------------------------------------------
+    repList = [rep[18][0],  rep[19][0], repRNN[0], repRNN[1],
+               repBase[0], repBase[1], rep[18][1],  rep[19][1]]
+    repName = ["Average-20-20", "Average-30-30", "GRU-40", "GRU-70",
+               "DAE-80", "SDAE-100-50", "Weighted-20-20", "Weighted-30-30"]
 
-#    # Anamoly detection(LOF): select the best score
-#    featureRocBestInd, featureRocBest, featureRocRec = select_best_lof_value(data=featureRep,
-#                                                                             y_true=y_true,
-#                                                                             nn_range=[i for i in range(60, 200, 10)])
-#    
-#    rocBestInd, rocBest, rocRec = [], [], []
-#    for data_rep in repList:
-#        tmp_1, tmp_2, tmp_3 = select_best_lof_value(data_rep,
-#                                                    y_true=y_true,
-#                                                    nn_range=[i for i in range(60, 200, 10)])
-#        rocBestInd.append(tmp_1)
-#        rocBest.append(tmp_2)
-#        rocRec.append(tmp_3)
+    # Anamoly detection(LOF): select the best score
+    featureRocBestInd, featureRocBest, featureRocRec = select_best_lof_value(data=featureRep,
+                                                                             y_true=y_true,
+                                                                             nn_range=[i for i in range(60, 200, 10)])
+    
+    rocBestInd, rocBest, rocRec = [], [], []
+    for data_rep in repList:
+        tmp_1, tmp_2, tmp_3 = select_best_lof_value(data_rep,
+                                                    y_true=y_true,
+                                                    nn_range=[i for i in range(60, 200, 10)])
+        rocBestInd.append(tmp_1)
+        rocBest.append(tmp_2)
+        rocRec.append(tmp_3)
     ###############################################
     ###############################################
     '''
@@ -192,7 +168,6 @@ if __name__ == "__main__":
 #    fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
 #    pts_index = [i for i in range(60, 200, 10)]
 #    lw = 2
-#
 #    # Plot the best roc curve
 #    axObj[0][0].plot(featureRocRec[2][featureRocBestInd][1],
 #                     featureRocRec[2][featureRocBestInd][2],
@@ -203,7 +178,7 @@ if __name__ == "__main__":
 #                         rocRec_ind[2][rocBestInd_ind][2],
 #                         label= repName[ind] + '(auc={:.4f})'.format(rocBest_ind),
 #                         lw=lw, color=colors[ind])
-#    axObj[0][0].tick_params(axis="both", labelsize=8)
+#    axObj[0][0].tick_params(axis="both", labelsize=10)
 #    axObj[0][0].legend(fontsize=8)
 #    axObj[0][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 #    
@@ -226,31 +201,57 @@ if __name__ == "__main__":
 #                    lw=lw, color=colors[ind])
 #        ax.legend(fontsize=8)
 #        ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-#        ax.tick_params(axis="y", labelsize=8)
-#        ax.tick_params(axis="x", labelsize=8)
+#        ax.tick_params(axis="y", labelsize=10)
+#        ax.tick_params(axis="x", labelsize=10)
 #    
 #    for obj in axObj.ravel():
 #        obj.grid(False)
 #        obj.set_xlim(0, 1)
 #        obj.set_ylim(0, )
-#    plt.tight_layout()    
+#    plt.tight_layout()
 #    
 #    if plotSave == True:
 #        plt.savefig(".//Plots//3_ROC_roc_curve_different_rep.pdf", dpi=500, bbox_inches="tight")
+
     
+    # Generating the LATEX format tables
+    scoresCompare = pd.DataFrame(None)
+    table_list = [60, 80, 100, 120, 140, 160, 180]
+    scoresCompare["K"] = table_list
+    scoresCompare["Features"] = [featureRocRec[1][ind] for ind, item in enumerate(featureRocRec[0]) if item in table_list]
+    for ind, (name, score) in enumerate(zip(repName, rocRec)):
+        scoresCompare[name] = [rocRec[ind][1][i] for i, item in enumerate(rocRec[ind][0]) if item in table_list]
+    
+    scoresCompare = scoresCompare[["K", "Features", "DAE-80", "SDAE-100-50", "GRU-40", "GRU-70",
+                                   "Average-20-20", "Average-30-30", "Weighted-20-20",
+                                   "Weighted-30-30"]]
+    
+    scores_str = ""
+    with open(".//Models//" + '3_ROC_anomaly_detection_results.txt', 'w') as f:
+        scores_vals = scoresCompare.values
+        for i in range(scores_vals.shape[0]):
+            for j in range(scores_vals.shape[1]):
+                if j != (scores_vals.shape[1] - 1):
+                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + " & "
+                else:
+                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + "\\\\"
+            scores_str += "\n"
+        f.write(scores_str)
+
     '''
     Plot 2: Weights changing, bins changing.
     '''
     plt.close("all")
     #####################################################
     fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
-    # windowSize=(20, 30, 40), stride=(20, 30, 40), nn=25
     nn_nums = "in_3"
     for plot_ind, (ax, stride, windowSize) in enumerate(zip(axObj[0], [20, 30, 40], [20, 30, 40])):
-        repName = [ind for ind, item in enumerate(fileNameAE) if (str(windowSize) in item) and (str(stride) in item) and (nn_nums in item)]
+        repName = [ind for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)]
+        print([item for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)])
+        print("\n")
         rep_tmp = [repOriginal[ind] for ind in repName][0]
         
-        params = [[3.5, 5], [1.5, 5], [0.05, 5], [0.3, 5], [0.3, 25], [0.3, 50]]
+        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
         rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
         rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
         base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
@@ -263,16 +264,17 @@ if __name__ == "__main__":
                 color="darkgreen", marker="x", linestyle="--",
                 label="Simple average")
         ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=8)
+        ax.tick_params(axis="both", labelsize=10)
         ax.legend(fontsize=8)
-    print("40 completed.")
-        
-    # windowSize=40, stride=(10, 20, 30), nn=15
+    print("Row 1 completed.")
+
     for plot_ind, (ax, stride) in enumerate(zip(axObj[1], [10, 20, 30])):
-        repName = [ind for ind, item in enumerate(fileNameAE) if ("40" in item) and (str(stride) in item) and (nn_nums in item)]
+        repName = [ind for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)]
+        print([item for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)])
+        print("\n")
         rep_tmp = [repOriginal[ind] for ind in repName][0]
         
-        params = [[3.5, 5], [1.5, 5], [0.05, 5], [0.3, 5], [0.3, 25], [0.3, 50]]
+        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
         rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
         rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
         base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
@@ -285,56 +287,68 @@ if __name__ == "__main__":
                 color="darkgreen", marker="x", linestyle="--",
                 label="Simple average")
         ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=8)
+        ax.tick_params(axis="both", labelsize=10)
         ax.legend(fontsize=8)
-    print("50 completed.")
     plt.tight_layout()
+    print("Row 2 completed.")
     
     if plotSave == True:
-        plt.savefig(".//Plots//3_ROC_different_weights_bin_stride_windowSize_roc_"+ nn_nums + ".pdf", dpi=500, bbox_inches="tight")    
+        plt.savefig(".//Plots//3_ROC_different_weights_bin_stride_windowSize_roc_"+ nn_nums + ".pdf", dpi=500, bbox_inches="tight")
 
     '''
     Plot 3: Increasing the neurons
     '''
-    plt.close("all")
-    #####################################################
-    fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
-    
-    # windowSize=(20, 30, 40), stride=(20, 30, 40)
-    for plot_ind, (ax, windowSize, stride) in enumerate(zip(axObj[0], [20, 30, 40], [20, 30, 40])):
-        repName_in = [ind for ind, item in enumerate(fileNameAE) if (str(windowSize) in item) and (str(stride) in item) and ("in" in item)]
-        
-        params = [5, 15, 25, 35, 45, 60]
-        rep_tmp_in = [repOriginal[item] for ind, item in enumerate(repName_in) if ind in [0, 1, 2, 3, 4, 5]]
-        rep_test_in = [weighting_rep(item, norm_factor=0.1, bin_name="bin_freq_10") for item in rep_tmp_in]
-        rep_lof_results_in = [select_best_lof_value(rep_test_in[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test_in))]
-        for ind, (res, param) in enumerate(zip(rep_lof_results_in, params)):
-            ax.plot(res[2][0], res[2][1], lw=2,
-                    color=colors[ind], marker=markers[ind],
-                    label="Neurons={}".format(param))
-        ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=8)
-        ax.legend(fontsize=8)
-
-    # windowSize=40, stride=(10, 20, 30)
-    for plot_ind, (ax, windowSize, stride) in enumerate(zip(axObj[1], [40, 40, 40], [10, 20, 30])):
-        repName_in = [ind for ind, item in enumerate(fileNameAE) if (str(windowSize) in item) and (str(stride) in item) and ("in" in item)]
-        
-        params = [5, 15, 25, 35, 45, 60]
-        rep_tmp_in = [repOriginal[item] for ind, item in enumerate(repName_in) if ind in [0, 1, 2, 3, 4, 5]]
-        rep_test_in = [weighting_rep(item, norm_factor=0.1, bin_name="bin_freq_10") for item in rep_tmp_in]
-        rep_lof_results_in = [select_best_lof_value(rep_test_in[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test_in))]
-        for ind, (res, param) in enumerate(zip(rep_lof_results_in, params)):
-            ax.plot(res[2][0], res[2][1], lw=2,
-                    color=colors[ind], marker=markers[ind],
-                    label="Neurons={}".format(param))
-        ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=8)
-        ax.legend(fontsize=8)
-
-    plt.tight_layout()
-    if plotSave == True:
-        plt.savefig(".//Plots//3_ROC_different_neurons_dropout_stride_windowSize_roc.pdf", dpi=500, bbox_inches="tight")
+#    plt.close("all")
+#    #####################################################
+#    fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
+#    
+#    # Row 1
+#    #--------------------------------------------------
+#    # windowSize=(20, 30, 40), stride=(20, 30, 40)
+#    for plot_ind, (ax, windowSize, stride) in enumerate(zip(axObj[0], [20, 30, 40], [20, 30, 40])):
+#        repName_in = [ind for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and ("in" in item)]
+#        print([item for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and ("in" in item)])
+#
+#        # in_0: 5    in_1: 15    in_2: 25    in_3:35    in_4:45    in_5:60
+#        params = [0, 1, 2, 3, 4, 5]
+#        rep_tmp_in = [repOriginal[item] for ind, item in enumerate(repName_in) if ind in params]
+#        print([fileNameAE[item] for ind, item in enumerate(repName_in) if ind in params])
+#        print("\n")
+#        rep_test_in = [weighting_rep(item, norm_factor=0.1, bin_name="bin_freq_10") for item in rep_tmp_in]
+#        rep_lof_results_in = [select_best_lof_value(rep_test_in[item][1], y_true, [i for i in range(60, 200+20, 20)]) for item in range(len(rep_test_in))]
+#        for ind, (res, param) in enumerate(zip(rep_lof_results_in, [5, 15, 25, 35, 45, 60])):
+#            ax.plot(res[2][0], res[2][1], lw=2,
+#                    color=colors[ind], marker=markers[ind],
+#                    label="Neurons={}".format(param))
+#        ax.set_xlim(59, 201)
+#        ax.tick_params(axis="both", labelsize=8)
+#        ax.legend(fontsize=10)
+#
+#    # Row 2
+#    #--------------------------------------------------
+#    # windowSize=40, stride=(10, 20, 30)
+#    for plot_ind, (ax, windowSize, stride) in enumerate(zip(axObj[1], [40, 40, 40], [10, 20, 30])):
+#        repName_in = [ind for ind, item in enumerate(fileNameAE) if (str(windowSize) in item) and (str(stride) in item) and ("in" in item)]
+#        print([item for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and ("in" in item)])
+#
+#        params = [0, 1, 2, 3, 4, 5]
+#        rep_tmp_in = [repOriginal[item] for ind, item in enumerate(repName_in) if ind in params]
+#        print([fileNameAE[item] for ind, item in enumerate(repName_in) if ind in params])
+#        print("\n")
+#        
+#        rep_test_in = [weighting_rep(item, norm_factor=0.1, bin_name="bin_freq_10") for item in rep_tmp_in]
+#        rep_lof_results_in = [select_best_lof_value(rep_test_in[item][1], y_true, [i for i in range(60, 200+20, 20)]) for item in range(len(rep_test_in))]
+#        for ind, (res, param) in enumerate(zip(rep_lof_results_in, [5, 15, 25, 35, 45, 60])):
+#            ax.plot(res[2][0], res[2][1], lw=2,
+#                    color=colors[ind], marker=markers[ind],
+#                    label="Neurons={}".format(param))
+#        ax.set_xlim(59, 201)
+#        ax.tick_params(axis="both", labelsize=8)
+#        ax.legend(fontsize=10)
+#
+#    plt.tight_layout()
+#    if plotSave == True:
+#        plt.savefig(".//Plots//3_ROC_different_neurons_dropout_stride_windowSize_roc.pdf", dpi=500, bbox_inches="tight")
 
     '''
     Plot 5: ROC value boxenplot

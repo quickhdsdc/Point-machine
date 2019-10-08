@@ -12,15 +12,14 @@ import os
 import numpy as np
 import seaborn as sns
 import pandas as pd
-import gc
-import random
 import warnings
 warnings.filterwarnings('ignore')
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.decomposition import PCA, KernelPCA
-from UTILS import LoadSave
+from sklearn.decomposition import KernelPCA
+from UTILS import LoadSave, weighting_rep
 from DistanceMeasurements import dynamic_time_warping
+
 np.random.seed(2019)
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 colors = ["C" + str(i) for i in range(0, 9+1)]
@@ -54,27 +53,61 @@ def feature_kernel_pca(features=[], n_components=10):
 if __name__ == "__main__":
     currentData = load_data()
     groundTruth, ts, features = currentData[0], currentData[1], currentData[2]
+    y_true = np.where(groundTruth["label"] != -1, 1, -1)
     
     signal = {"current": ts}
     signal = pd.DataFrame(signal, columns=["current"])
     plotSave, plotShow = True, False
-    
-    
     ###############################################
     ###############################################
     '''
-    Step 1: Load all DAE representations.
+    Step 1: Load all DAE representations, and perform the anamoly detection.
     '''
     PATH = ".//Data//rep_data//"
     ls = LoadSave(PATH)
     fileName = os.listdir(PATH)
-    load_all_rep = False
-    if load_all_rep:
-        # Get the representations
+    
+    # Get the representations
+    fileNameAE = sorted([name for name in fileName if ("rnn" not in name) and ("base" not in name)])
+    fileNameRNN = sorted([name for name in fileName if "rnn" in name])
+    fileNameBase = sorted([name for name in fileName if "base" in name])
+    
+    # Get the representations
+    load_all = True
+    if load_all:
         featureRep = feature_kernel_pca(features=features.drop(["dateTime", "no"], axis=1), n_components=20)
-        rep = []
-        for name in fileName:
-            rep.append(ls.load_data(PATH + name))
+        rep, repOriginal, repRNN, repBase = [], [], [], []
+        for name in fileNameAE:
+            df = ls.load_data(PATH + name)
+            repOriginal.append(df.copy())
+            rep.append(weighting_rep(df, norm_factor=0.1, bin_name="bin_freq_10"))
+            
+        for name in fileNameRNN:
+            repRNN.append(ls.load_data(PATH + name))
+        for name in fileNameBase:
+            repBase.append(ls.load_data(PATH + name))
+            repBase[-1] = repBase[-1][[name for name in repBase[-1].columns if "rep" in name]].values
+    ###############################################
+    ###############################################
+    # Normal samples index
+    normal_index = groundTruth[groundTruth["label"] != -1]["ind"].values.astype("int")
+    normal_index_label = groundTruth[groundTruth["label"] != -1]["label"].values.astype("int")
+    
+    # Scaling the features
+    featureTmp = features.copy()
+    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
+    X_sc = StandardScaler()
+    for name in featureTmp.columns:
+        featureTmp[name].fillna(featureTmp[name].mean(), inplace=True)
+        featureTmp[name] = X_sc.fit_transform(featureTmp[name].values.reshape(len(featureTmp), 1))    
+
+    # Anamoly detection: select the best score
+    # Step ==> 10, 20, 30, neurons(20), windowSize(40)
+    #----------------------------------------------------
+    repList = [featureTmp, rep[19][0],  rep[32][0], repRNN[0], repRNN[1],
+               repBase[0], repBase[1], rep[19][1],  rep[32][1]]
+    repName = ["FeatureBased", "Average-20-20", "Average-30-30", "GRU-40", "GRU-70",
+               "DAE-80", "SDAE-100-50", "Weighted-20-20", "Weighted-30-30"]    
     
     ###############################################
     ###############################################
@@ -86,7 +119,7 @@ if __name__ == "__main__":
     class_3_ind = groundTruth[groundTruth["label"] == 3]["ind"].values
     class_abnormal_ind = groundTruth[groundTruth["label"] == -1]["ind"].values
     
-    rep_to_calculate = [rep[0], rep[1], rep[65], rep[16]]
+    rep_to_calculate = [rep[19][0], rep[32][0], rep[19][1], rep[32][1]]
     similarity_results = np.zeros((800, len(rep_to_calculate) + 2))
     
     '''
@@ -202,13 +235,4 @@ if __name__ == "__main__":
     cbar = ax.collections[0].colorbar
     cbar.ax.tick_params(labelsize=7)
     plt.tight_layout()
-    
-    
-#    # Sequence shift
-#    #---------------------------------------------------
-#    np.random.seed(9408)
-#    sampled_seqs_1.append(np.random.choice(class_3_ind, 200, replace=True))
-#    
-#    np.random.seed(9410)
-#    sampled_seqs_2.append(np.random.choice(class_abnormal_ind, 200, replace=True))
     
