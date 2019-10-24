@@ -73,7 +73,7 @@ if __name__ == "__main__":
     fileNameBase = sorted([name for name in fileName if "base" in name])
     
     # Get the representations
-    load_all = True
+    load_all = False
     if load_all:
         featureRep = feature_kernel_pca(features=features.drop(["dateTime", "no"], axis=1), n_components=20)
         rep, repOriginal, repRNN, repBase = [], [], [], []
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     similarity_results = np.zeros((800, len(rep_to_calculate) + 2))
     
     '''
-    Step 3: Draw samples.
+    Step 3: Sampling samples.
     '''    
     # Draw samples from class 1
     #---------------------------------------------------
@@ -215,24 +215,27 @@ if __name__ == "__main__":
         cbar.ax.tick_params(labelsize=7)
     plt.tight_layout()
 
+    if plotSave == True:
+        plt.savefig(".//Plots//6_DTWRELATION_heatmap_dtw_relation.png", dpi=500, bbox_inches="tight")
+    plt.close("all")
     
-    # Linear relationship
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax = sns.regplot(x=similarity_results[:, 1], y=similarity_results[:, -1], ax=ax, marker="o")
-    ax = sns.regplot(x=similarity_results[:, 1], y=similarity_results[:, -2], ax=ax, marker="x")
-    
-    # Linear relationship
-    fig, ax = plt.subplots(figsize=(10, 8))
-    featureCorr = feature.corr()
-    ax = sns.heatmap(featureCorr, xticklabels=1, yticklabels=1,
-                     cmap="Blues", fmt='.2f', annot=True,
-                     annot_kws={'size':7.5,'weight':'bold'}, ax=ax)
-    ax.tick_params(axis="y", labelsize=7, rotation=0)
-    ax.tick_params(axis="x", labelsize=7)
-    
-    ax.set_xlabel("Variable X", fontsize=8)
-    ax.set_ylabel("Variable Y", fontsize=8)
-    cbar = ax.collections[0].colorbar
-    cbar.ax.tick_params(labelsize=7)
-    plt.tight_layout()
+#    # Linear relationship
+#    fig, ax = plt.subplots(figsize=(7, 4))
+#    ax = sns.regplot(x=similarity_results[:, 1], y=similarity_results[:, -1], ax=ax, marker="o")
+#    ax = sns.regplot(x=similarity_results[:, 1], y=similarity_results[:, -2], ax=ax, marker="x")
+#    
+#    # Linear relationship
+#    fig, ax = plt.subplots(figsize=(10, 8))
+#    featureCorr = feature.corr()
+#    ax = sns.heatmap(featureCorr, xticklabels=1, yticklabels=1,
+#                     cmap="Blues", fmt='.2f', annot=True,
+#                     annot_kws={'size':7.5,'weight':'bold'}, ax=ax)
+#    ax.tick_params(axis="y", labelsize=7, rotation=0)
+#    ax.tick_params(axis="x", labelsize=7)
+#    
+#    ax.set_xlabel("Variable X", fontsize=8)
+#    ax.set_ylabel("Variable Y", fontsize=8)
+#    cbar = ax.collections[0].colorbar
+#    cbar.ax.tick_params(labelsize=7)
+#    plt.tight_layout()
     

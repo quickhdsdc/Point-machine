@@ -51,7 +51,9 @@ if __name__ == "__main__":
     ###############################################################################
     plt.close("all")
     
-    # Some new plot
+    '''
+    Step -1: Try some new plots.
+    '''
 #    components = 2
 #    featureTmp = features.copy()
 #    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
@@ -69,9 +71,9 @@ if __name__ == "__main__":
 #    g.plot_joint(plt.scatter, c="r", s=30, linewidth=1, marker="+")
 #    g.ax_joint.collections[0].set_alpha(0)
 #    g.set_axis_labels("$X$", "$Y$")
+    
     '''
     Step 0: Plot 4 typical noisy signal.
-    
     '''
 #    fig, axObj = plt.subplots(1, 4, figsize=(16, 3))
 #    noiseInd = [i for i in list(features.index) if groundTruth["label"].loc[i] == -1]
@@ -429,8 +431,7 @@ if __name__ == "__main__":
 #        plt.close("all")
     
     '''
-    Step 7: OCSVM-features based anomaly detection.(Proving the feature based 
-    anomaly detection has no effect for this problem.)
+    Step 7: OCSVM-features based anomaly detection.
     '''
 #    # Standardizing the data
 #    featureTmp = features.copy()
@@ -672,3 +673,28 @@ if __name__ == "__main__":
 #        plt.close("all")
 #    if not plotShow:
 #        plt.close("all")
+    '''
+    Step 10: Plot normal signals with abnormal signals.
+    '''
+    noiseInd = [i for i in list(features.index) if groundTruth["label"].loc[i] == -1]
+    noiseInd = np.random.choice(noiseInd, size=10, replace=False)
+    noiseTs = [ts[i] for i in noiseInd]
+    
+    normalInd = [i for i in list(features.index) if groundTruth["label"].loc[i] != -1]
+    normalInd = np.random.choice(normalInd, size=300, replace=False)
+    normalTs = [ts[i] for i in normalInd]
+    
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for signal in noiseTs:
+        ax.plot(signal, color="r", linewidth=1.5)
+    for signal in normalTs:
+        ax.plot(signal, color="k", linewidth=1.5)
+    ax.tick_params(axis="both", labelsize=8)
+    ax.set_xlim(0, 157)
+    ax.set_ylim(0, 7.5)
+
+    if plotSave:
+        plt.savefig(".//Plots//0_EDA_anomaly_normal_mixed.png", dpi=500, bbox_inches="tight")
+        plt.close("all")
+    if not plotShow:
+        plt.close("all")

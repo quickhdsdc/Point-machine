@@ -312,7 +312,7 @@ if __name__ == "__main__":
     
     signal = {"current": ts}
     signal = pd.DataFrame(signal, columns=["current"])
-    y_true=np.where(groundTruth["label"] != -1, 1, -1)
+    y_true = np.where(groundTruth["label"] != -1, 1, -1)
     
     ###############################################
     ###############################################
@@ -404,59 +404,131 @@ if __name__ == "__main__":
     ###############################################
     ###############################################
     '''
-    Step 2: Create the training data.
+    Step 2: Segments plot for the paper.
     '''
-    trainPrecent = 0.85
-    trainData, validData = [], []
+#    plot_ts_ind = 5
+#    plot_ts_seg, plot_ts_df = ts[1222], segDataFrameList[plot_ts_ind] # 12
+#    seg_0, seg_1, seg_2 = plot_ts_df.loc[48]["segment"], plot_ts_df.loc[49]["segment"], plot_ts_df.loc[50]["segment"]
+#    
+#    # @@Plot the segments
+#    for seg_ind, seg_tmp in enumerate([seg_0, seg_1, seg_2]):
+#        fig, ax = plt.subplots(figsize=(3, 2))
+#        ax.plot(seg_tmp, color="k", lw=1.3)
+#        ax.tick_params(axis="both", labelsize=7)
+#        
+#        # Modified the tick thickness and axis thickness
+#        for axis in ['top','bottom','left','right']:
+#            ax.spines[axis].set_linewidth(2.5)
+#        ax.xaxis.set_tick_params(width=0.1)
+#        ax.yaxis.set_tick_params(width=0.1)
+#        
+#        ax.set_xlim(0, len(seg_tmp) - 1)
+#        ax.set_ylim(0, 5.5)
+#        ax.set_xticks([])
+#        ax.set_yticks([])
+#        plt.tight_layout()
+#        plt.savefig(".//Plots//1_REP_segment_" + str(seg_ind) + ".png",  dpi=500, bbox_inches="tight")
+#        plt.close("all")        
+#    
+#    # @@Plot the whole sequence
+#    fig, ax = plt.subplots(figsize=(5, 2))
+#    ax.plot(plot_ts_seg, color="k", lw=1.6)
+#    
+#    ax.tick_params(axis="both", labelsize=7)
+#    ax.set_xticks([])
+#    ax.set_yticks([])
+#    ax.set_xlim(0, len(plot_ts_seg) - 1)
+#    ax.set_ylim(0, 5.5)    
+#    plt.tight_layout()
+#    plt.savefig(".//Plots//1_REP_segment_total.png",  dpi=500, bbox_inches="tight")
+#    plt.close("all")
+#
+#    # @@Plot the whole sequence with line
+#    fig, ax = plt.subplots(figsize=(8, 4))
+#    ax.plot(plot_ts_seg, color="k", lw=2)
+#    ax.set_xlim(0, len(plot_ts_seg) - 1)
+#    ax.set_ylim(0, 5.5)
+#    ax.tick_params(axis="both", labelsize=10)
+#    
+#    ax.axvline(x=5, color="r", lw=2, linestyle="--")
+#    ax.axvline(x=19, color="r", lw=2, linestyle="--")
+#    ax.axvline(x=125, color="r", lw=2, linestyle="--")
+#    
+#    ax.set_xlabel("Time Step", fontsize=10)
+#    ax.set_ylabel("Current(A)", fontsize=10)
+#    plt.tight_layout()
+#
+#    plt.savefig(".//Plots//1_REP_current.png",  dpi=500, bbox_inches="tight")
+#    plt.close("all")
+#    
+#    # @@Plot the variance distribution
+#    tmp_df = plot_ts_df.sample(frac=0.07, replace=False, random_state=102)
+#    tmp_df = plot_ts_df
+#    fig, ax = plt.subplots(figsize=(5, 3))
+#    ax = sns.distplot(tmp_df["var"].values, color="k", kde=False, rug=False, bins=10, ax=ax)
+#    
+#    ax.set_xlabel("Variance", fontsize=7)
+#    ax.set_ylabel("Bin Frequency", fontsize=7)
+#    ax.set_xlim(0, )
+#    ax.tick_params(axis="both", labelsize=7)
+#    plt.tight_layout()
+#    plt.savefig(".//Plots//1_REP_sampled_bin_rug_plot.png",  dpi=500, bbox_inches="tight")
+#    plt.close("all")
     
-    for ind, (segTs, segDataFrame, windowParam) in enumerate(zip(segTsList[:-1], segDataFrameList[:-1], windowParamsList[:-1])):
-        pointer, padding_value, total_samples = 0, 0, len(segDataFrame)
-        index_val = segDataFrame["ind"].values.astype(int)
-        train_data_tmp = []
-        
-        while(pointer < total_samples):
-            if pointer == (total_samples - 1) or (index_val[pointer] != index_val[pointer + 1]):
-#                tmp = pad_sequences([segTs[pointer][-stride:]],
-#                                    dtype='float64', padding='post', value=padding_value,
-#                                    maxlen=windowParam[0])
-                tmp = [[0] * windowParam[0]]
-                train_data_tmp.append([segTs[pointer-1],
-                                       segTs[pointer],
-                                       tmp[0]])
-                pointer += 1
-                continue
-            
-            # Front of df
-            if (pointer == 0) or (index_val[pointer] != index_val[pointer - 1]):
-#                tmp = pad_sequences([segTs[pointer][:stride]],
-#                                    dtype='float64', padding='pre', value=padding_value,
-#                                    maxlen=windowParam[0])
-                tmp = [[0] * windowParam[0]]
-                train_data_tmp.append([tmp[0],
-                                       segTs[pointer],
-                                       segTs[pointer+1]])
-                pointer += 1
-            else:
-                train_data_tmp.append([segTs[pointer-1],
-                                       segTs[pointer],
-                                       segTs[pointer+1]])
-                pointer += 1
-        
-        
-        X_train, X_valid = train_data_tmp[:int(trainPrecent * len(segTs))], train_data_tmp[int(trainPrecent * len(segTs)):]
-        trainData.append(X_train)
-        validData.append(X_valid)
+    
+    '''
+    Step 3: Create the training data.
+    '''
+#    trainPrecent = 0.85
+#    trainData, validData = [], []
+#    
+#    for ind, (segTs, segDataFrame, windowParam) in enumerate(zip(segTsList[:-1], segDataFrameList[:-1], windowParamsList[:-1])):
+#        pointer, padding_value, total_samples = 0, 0, len(segDataFrame)
+#        index_val = segDataFrame["ind"].values.astype(int)
+#        train_data_tmp = []
+#        
+#        while(pointer < total_samples):
+#            if pointer == (total_samples - 1) or (index_val[pointer] != index_val[pointer + 1]):
+##                tmp = pad_sequences([segTs[pointer][-stride:]],
+##                                    dtype='float64', padding='post', value=padding_value,
+##                                    maxlen=windowParam[0])
+#                tmp = [[0] * windowParam[0]]
+#                train_data_tmp.append([segTs[pointer-1],
+#                                       segTs[pointer],
+#                                       tmp[0]])
+#                pointer += 1
+#                continue
+#            
+#            # Front of df
+#            if (pointer == 0) or (index_val[pointer] != index_val[pointer - 1]):
+##                tmp = pad_sequences([segTs[pointer][:stride]],
+##                                    dtype='float64', padding='pre', value=padding_value,
+##                                    maxlen=windowParam[0])
+#                tmp = [[0] * windowParam[0]]
+#                train_data_tmp.append([tmp[0],
+#                                       segTs[pointer],
+#                                       segTs[pointer+1]])
+#                pointer += 1
+#            else:
+#                train_data_tmp.append([segTs[pointer-1],
+#                                       segTs[pointer],
+#                                       segTs[pointer+1]])
+#                pointer += 1
+#        
+#        X_train, X_valid = train_data_tmp[:int(trainPrecent * len(segTs))], train_data_tmp[int(trainPrecent * len(segTs)):]
+#        trainData.append(X_train)
+#        validData.append(X_valid)
     ###############################################
     ###############################################
     '''
-    Step 2: Train all representations.
+    Step 4: Train all representations.
     '''
     # Training the baseline model
     #----------------------------------------------------
-    trainPrecent = 0.85
-    X_train, X_test = segTsList[-1][:int(trainPrecent * len(segTsList[-1])), :], segTsList[-1][int(trainPrecent * len(segTsList[-1])):, :]
-    train_baseline_dae(X_train, X_test, segDataFrameList[-1])
-    
+#    trainPrecent = 0.85
+#    X_train, X_test = segTsList[-1][:int(trainPrecent * len(segTsList[-1])), :], segTsList[-1][int(trainPrecent * len(segTsList[-1])):, :]
+#    train_baseline_dae(X_train, X_test, segDataFrameList[-1])
+#    
 #    # Training the original repsentation data
 #    #----------------------------------------------------
 #    for ind, (X_train, X_valid, segDataFrame, windowParam) in enumerate(zip(trainData, validData, segDataFrameList[:-1], windowParamsList[:-1])):
@@ -465,7 +537,7 @@ if __name__ == "__main__":
     ###############################################
     ###############################################
     '''
-    Step 3: Train a dae for the checking.
+    Step 5: Train a dae for the checking.
     '''
 #    test_ind = 0
 #    segTs, flag = segTsList[test_ind], segDataFrameList[test_ind]["ind"].values
@@ -521,7 +593,7 @@ if __name__ == "__main__":
     ##############################################
     ##############################################
     '''
-    Step 3: Basic visualizing for the code evaluation.
+    Step 6: Basic visualizing for the code evaluation.
     '''
     # Normalizing the data first
 #    X_sc = StandardScaler()

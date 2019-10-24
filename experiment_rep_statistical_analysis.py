@@ -34,6 +34,7 @@ np.random.seed(2019)
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 colors = ["C" + str(i) for i in range(0, 9+1)]
 markers = ["s", "^", "o", "d", "*", "<", ">", "h", "p"]
+legends = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)"]
 mpl.rcParams["font.family"] = "Times New Roman"
 ###############################################################################
 ###############################################################################
@@ -103,14 +104,14 @@ if __name__ == "__main__":
     fileNameBase = sorted([name for name in fileName if "base" in name])
     
     # Get the representations
-    load_all = False
+    load_all = True
     if load_all:
         featureRep = feature_kernel_pca(features=features.drop(["dateTime", "no"], axis=1), n_components=20)
         rep, repOriginal, repRNN, repBase = [], [], [], []
         for name in fileNameAE:
             df = ls.load_data(PATH + name)
             repOriginal.append(df.copy())
-            rep.append(weighting_rep(df, norm_factor=0.05, bin_name="bin_freq_10"))
+            rep.append(weighting_rep(df, norm_factor=0.1, bin_name="bin_freq_10"))
             
         for name in fileNameRNN:
             repRNN.append(ls.load_data(PATH + name))
@@ -123,19 +124,9 @@ if __name__ == "__main__":
     # Anamoly detection: select the best score
     # Step ==> 10, 20, 30, neurons(15), windowSize(40)(Bset visualizing)
     #----------------------------------------------------
-#    repList = [rep[20][0], rep[21][0], repBase[0], repRNN[0],
-#               rep[20][1], rep[21][1], repBase[1], repRNN[1]]
+    repList = [rep[18][0], rep[19][0], repBase[0], repRNN[0],
+               rep[18][1], rep[19][1], repBase[1], repRNN[1]]
 
-    # Anamoly detection: select the best score
-    # Step ==> 10, 20, 30, neurons(20), windowSize(40)(Bset visualizing)
-    #----------------------------------------------------
-#    repList = [rep[43][0], rep[52][0], rep[60][0], 
-#               rep[43][1], rep[52][1], rep[60][1]]
-    
-    # Step ==> 10, 20, 30, neurons(20), windowSize(40)
-    #----------------------------------------------------    
-#    repList = [rep[60], rep[62], rep[64], 
-#               rep[61], rep[63], rep[65]]
     ###############################################
     ###############################################
     '''
@@ -200,54 +191,58 @@ if __name__ == "__main__":
     '''
     Plot 3: Dimen-redunction for the rep.
     '''
-#    # Plot the baseline representations
-#    featureTmp = features.copy()
-#    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
-#    repList = [featureTmp, repBase[0], repRNN[0],
-#               featureTmp, repBase[1], repRNN[1]]
-#    
-#    fig, axObj = plt.subplots(2, 3, figsize=(14, 7))
-#    for i, ax in enumerate(axObj.ravel()):
-#        
-#        X_sc = StandardScaler()
-#        rep_pca = X_sc.fit_transform(repList[i])
-#        
-#        if i != 3:
-#            clf = KernelPCA(n_components=2, kernel="rbf")
-#            rep_pca = clf.fit_transform(rep_pca)
-#        else:
-#            clf = PCA(n_components=2)
-#            rep_pca = clf.fit_transform(rep_pca)
-#        
-#        uniqueLabels = [1, 2, 3, -1]
-#        for j, label in enumerate(uniqueLabels):
-#            sampleIndex = np.arange(0, len(groundTruth))
-#            labeledSampleIndex = sampleIndex[groundTruth["label"] == label]
-#            
-#            coords = rep_pca[labeledSampleIndex, :]
-#            if label != -1:
-#                ax.scatter(coords[:, 0], coords[:, 1], s=9, alpha=0.4, 
-#                           color=colors[j], marker=markers[j], label="Class " + str(label))
-#            else:
-#                ax.scatter(coords[:, 0], coords[:, 1], s=9, alpha=0.4,
-#                           color='r', marker="x", label="Class -1")
-#            ax.tick_params(axis="y", labelsize=10)
-#            ax.tick_params(axis="x", labelsize=10)
-#            ax.legend(fontsize=9, loc="upper right")
-#    plt.tight_layout()
-#    
-#    if plotSave == True:
-#        plt.savefig(".//Plots//2_REPANA_basline_representations.pdf", dpi=500, bbox_inches="tight")
-#    plt.close("all")
-
-    # Plot the baseline representations
+    
+    '''
+    Plot the baseline representations.
+    '''
+    featureTmp = features.copy()
+    featureTmp.drop(["dateTime", "no"], axis=1, inplace=True)
+    repList = [featureTmp, repBase[0], repRNN[0],
+               featureTmp, repBase[1], repRNN[1]]
+    
+    fig, axObj = plt.subplots(2, 3, figsize=(14, 7))
+    for i, (ax, legend) in enumerate(zip(axObj.ravel(), legends)):
+        
+        X_sc = StandardScaler()
+        rep_pca = X_sc.fit_transform(repList[i])
+        
+        if i != 3:
+            clf = KernelPCA(n_components=2, kernel="rbf")
+            rep_pca = clf.fit_transform(rep_pca)
+        else:
+            clf = PCA(n_components=2)
+            rep_pca = clf.fit_transform(rep_pca)
+        
+        uniqueLabels = [1, 2, 3, -1]
+        for j, label in enumerate(uniqueLabels):
+            sampleIndex = np.arange(0, len(groundTruth))
+            labeledSampleIndex = sampleIndex[groundTruth["label"] == label]
+            
+            coords = rep_pca[labeledSampleIndex, :]
+            if label != -1:
+                ax.scatter(coords[:, 0], coords[:, 1], s=9, alpha=0.4, 
+                           color=colors[j], marker=markers[j], label="Class " + str(label))
+            else:
+                ax.scatter(coords[:, 0], coords[:, 1], s=9, alpha=0.4,
+                           color='r', marker="x", label="Class -1")
+            ax.tick_params(axis="y", labelsize=10)
+            ax.tick_params(axis="x", labelsize=10)
+            ax.legend(fontsize=9, loc="upper right")
+        ax.set_xlabel(legend, fontsize=10)
+    plt.tight_layout()
+    
+    if plotSave == True:
+        plt.savefig(".//Plots//2_REPANA_basline_representations.pdf", dpi=500, bbox_inches="tight")
+    plt.close("all")
+    
+    '''
+    Plot the proposed unweighted representations.
+    '''
     repList = [rep[12][0], rep[13][0], rep[17][0], 
                rep[14][0], rep[15][0], rep[16][0]]
     
-#    repList = [rep[24][0], rep[25][0], rep[29][0], 
-#               rep[26][0], rep[27][0], rep[28][0]]
     fig, axObj = plt.subplots(2, 3, figsize=(14, 7))
-    for i, ax in enumerate(axObj.ravel()):
+    for i, (ax, legend) in enumerate(zip(axObj.ravel(), legends)):
         
         X_sc = StandardScaler()
         rep_pca = X_sc.fit_transform(repList[i])
@@ -270,19 +265,21 @@ if __name__ == "__main__":
             ax.tick_params(axis="y", labelsize=10)
             ax.tick_params(axis="x", labelsize=10)
             ax.legend(fontsize=9, loc="best")
+        ax.set_xlabel(legend, fontsize=10)
     plt.tight_layout()
     
     if plotSave == True:
         plt.savefig(".//Plots//2_REPANA_proposed_representations_simple_average.pdf", dpi=500, bbox_inches="tight")
     plt.close("all")
     
+    '''
+    Plot the proposed weighted representations.
+    '''
     repList = [rep[12][1], rep[13][1], rep[17][1], 
                rep[14][1], rep[15][1], rep[16][1]]
-
-#    repList = [rep[24][1], rep[25][1], rep[29][1], 
-#               rep[26][1], rep[27][1], rep[28][1]]    
+    
     fig, axObj = plt.subplots(2, 3, figsize=(14, 7))
-    for i, ax in enumerate(axObj.ravel()):
+    for i, (ax, legend) in enumerate(zip(axObj.ravel(), legends)):
         
         X_sc = StandardScaler()
         rep_pca = X_sc.fit_transform(repList[i])
@@ -304,7 +301,11 @@ if __name__ == "__main__":
                            color='r', marker="x", label="Class -1")
             ax.tick_params(axis="y", labelsize=10)
             ax.tick_params(axis="x", labelsize=10)
-            ax.legend(fontsize=9, loc="best")
+            if i == 0:
+                ax.legend(fontsize=9, loc="upper right")
+            else:
+                ax.legend(fontsize=9, loc="best")
+        ax.set_xlabel(legend, fontsize=10)
     plt.tight_layout()
     
     if plotSave == True:

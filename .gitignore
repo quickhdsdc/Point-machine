@@ -3,3 +3,6 @@
 
 # No .png files.
 *.png
+
+# Except 
+!/Data/current_ts_merged_3300.pkl

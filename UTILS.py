@@ -54,7 +54,7 @@ def timefn(fn):
         start = time.time()
         result = fn(*args, **kwargs)
         end = time.time()
-        print("@timefn: " + fn.__name__ + " took {:.5f}".format(end-start) + " seconds")
+        print("@timefn: " + fn.__name__ + " took {:.5f}".format(end-start) + " seconds.")
         return result
     return measure_time
 
@@ -224,7 +224,7 @@ def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
     ----------
     Author: Michael Yin
     Date: 2019/08/05
-    Modified: 2019/08/05
+    Modified: 2019/10/18
     Mail: zhuoyin94@163.com
     ----------
     
@@ -235,7 +235,7 @@ def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
     @Parameters:
     ----------
     seq: list-like or numpy-array-like
-        The path of the database.
+        An 1-d sequence.
     
     window: pandas DataFrame-like
         How many data points in a window.
@@ -268,7 +268,7 @@ def sequence_to_subsequence(seq=[], window=20, stride=10, portion=0.4):
     # Step 3: Start cutting the current.
     segRes = {}
     for ind, item in enumerate(segmentPoints):
-        tmp = seq[item:(item+window)]
+        tmp = seq[item:(item + window)]
         segRes[ind] = [tmp, np.mean(tmp), np.var(tmp), remainPts/len(seq)]
     return segRes
 
@@ -300,7 +300,7 @@ def sequence_to_padding_sequence(seq=[], padding_val=0, length=None):
     @Return:
     ----------
     paddingRes: list-like,
-            Padding results: [paddingSea, mean(paddingSea), var(paddingSea), None]
+        Padding results: [paddingSea, mean(paddingSea), var(paddingSea), None]
     '''
     if len(seq) > length:
         tmp = seq[:length].copy()
@@ -644,7 +644,7 @@ def weighting_rep(df=[], norm_factor=0.05, bin_name="bin_freq_10"):
     segRes = pd.merge(segRes, weightsNorm, how="left", on="ind")
     segRes["weights_norm"] = segRes["weights"] / segRes["norm_factor"]
     
-    # Reweighting
+    # Re-weighting
     signalRep_weight = repTs.multiply(segRes["weights_norm"].values, axis=0).copy()
     signalRep_weight["flag"] = segRes["ind"]
     signalRep_weight = signalRep_weight.groupby(["flag"]).mean().values

@@ -218,7 +218,7 @@ def gru_double_input_autoencoder(data_train=None, data_valid=None,
     encoder_nromal_neurons = 100
     encoder_reverse_neurons = 100
     
-    hidden_states = 90
+    hidden_states = 70
     
     '''
     Part 1: Double input of the encoder
@@ -452,6 +452,7 @@ if __name__ == "__main__":
     '''
     Step 2: Training the GRU model.
     '''
+#	# GRU Model version - 1
 #    predicted_res, rep = gru_bidirectional_autoencoder(data_train=data_train,
 #                                                       data_valid=data_valid,
 #                                                       data_train_target=data_train_target,
@@ -459,7 +460,8 @@ if __name__ == "__main__":
 #                                                       time_steps=ts_step_nums,
 #                                                       feature_num=ts_feature_nums,
 #                                                       mask_val=-10)
-    
+
+	# GRU Model version - 2
     predicted_res, rep = gru_double_input_autoencoder(data_train=data_train,
                                                       data_valid=data_valid,
                                                       data_train_target=data_train_target,
@@ -467,7 +469,8 @@ if __name__ == "__main__":
                                                       time_steps=ts_step_nums,
                                                       feature_num=ts_feature_nums,
                                                       mask_val=-10)
-    
+	
+#	# GRU Model version - 3
 #    predicted_res, rep = lstm_autoencoder_repeatvector(data_train=data_train,
 #                                                       data_valid=data_valid,
 #                                                       data_train_target=data_train_target,

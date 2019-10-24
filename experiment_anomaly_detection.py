@@ -35,6 +35,7 @@ np.random.seed(2019)
 sns.set(style="ticks", font_scale=1.2, palette='deep', color_codes=True)
 colors = ["C" + str(i) for i in range(0, 9+1)]
 markers = ["s", "^", "o", "d", "*", "<", ">", "h", "p"]
+legends = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)"]
 mpl.rcParams["font.family"] = "Times New Roman"
 ###############################################################################
 ###############################################################################
@@ -80,13 +81,13 @@ def feature_kernel_pca(features=[], n_components=10):
 ###############################################################################
 ###############################################################################
 if __name__ == "__main__":
-#    currentData = load_data()
-#    groundTruth, ts, features = currentData[0], currentData[1], currentData[2]
-#    y_true = np.where(groundTruth["label"] != -1, 1, -1)
-#    
-#    signal = {"current": ts}
-#    signal = pd.DataFrame(signal, columns=["current"])
-#    plotSave, plotShow = True, False
+    currentData = load_data()
+    groundTruth, ts, features = currentData[0], currentData[1], currentData[2]
+    y_true = np.where(groundTruth["label"] != -1, 1, -1)
+    
+    signal = {"current": ts}
+    signal = pd.DataFrame(signal, columns=["current"])
+    plotSave, plotShow = True, False
     ###############################################
     ###############################################
     '''
@@ -124,8 +125,8 @@ if __name__ == "__main__":
 #    #----------------------------------------------------
     repList = [rep[18][0],  rep[19][0], repRNN[0], repRNN[1],
                repBase[0], repBase[1], rep[18][1],  rep[19][1]]
-    repName = ["Average-20-20", "Average-30-30", "GRU-40", "GRU-70",
-               "DAE-80", "SDAE-100-50", "Weighted-20-20", "Weighted-30-30"]
+    repName = ["Average-I", "Average-II", "GRU-40", "GRU-70",
+               "SPDAE-80", "STDAE-150-50", "Weighted-I", "Weighted-II"]
 
     # Anamoly detection(LOF): select the best score
     featureRocBestInd, featureRocBest, featureRocRec = select_best_lof_value(data=featureRep,
@@ -171,39 +172,41 @@ if __name__ == "__main__":
 #    # Plot the best roc curve
 #    axObj[0][0].plot(featureRocRec[2][featureRocBestInd][1],
 #                     featureRocRec[2][featureRocBestInd][2],
-#                     label='FeatureBased(auc={:.4f})'.format(featureRocBest),
+#                     label='Featurebased(AUC={:.4f})'.format(featureRocBest),
 #                     lw=lw, color="darkgreen")
 #    for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
 #        axObj[0][0].plot(rocRec_ind[2][rocBestInd_ind][1],
 #                         rocRec_ind[2][rocBestInd_ind][2],
-#                         label= repName[ind] + '(auc={:.4f})'.format(rocBest_ind),
+#                         label= repName[ind] + '(AUC={:.4f})'.format(rocBest_ind),
 #                         lw=lw, color=colors[ind])
 #    axObj[0][0].tick_params(axis="both", labelsize=10)
 #    axObj[0][0].legend(fontsize=8)
 #    axObj[0][0].plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+#    axObj[0][0].set_xlabel("(a)", fontsize=10)
 #    
 #    # Plot the remain roc curve
 #    index_list = [0, 2, 4, 8, 13]
-#    for ax_ind, (nn_pts, ax) in enumerate(zip(index_list, axObj.ravel()[1:])):
+#    for ax_ind, (nn_pts, ax, legend) in enumerate(zip(index_list, axObj.ravel()[1:], legends[1:])):
 #        
 #        pts = pts_index[nn_pts]
 #        # Plot the feature-based roc curve
 #        ax.plot(featureRocRec[2][nn_pts][1],
 #                featureRocRec[2][nn_pts][2],
-#                label='FeatureBased(nn=' + str(pts) + ', auc={:.3f})'.format(featureRocRec[1][nn_pts]),
+#                label='Featurebased(k=' + str(pts) + ', AUC={:.3f})'.format(featureRocRec[1][nn_pts]),
 #                lw=lw, color="darkgreen")
 #        
 #        # Plot the rep-based roc curve
 #        for ind, (rocBestInd_ind, rocBest_ind, rocRec_ind) in enumerate(zip(rocBestInd, rocBest, rocRec)):
 #            ax.plot(rocRec_ind[2][nn_pts][1],
 #                    rocRec_ind[2][nn_pts][2],
-#                    label= repName[ind] + '(auc={:.4f})'.format(rocRec_ind[1][nn_pts]),
+#                    label= repName[ind] + '(AUC={:.4f})'.format(rocRec_ind[1][nn_pts]),
 #                    lw=lw, color=colors[ind])
 #        ax.legend(fontsize=8)
 #        ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 #        ax.tick_params(axis="y", labelsize=10)
 #        ax.tick_params(axis="x", labelsize=10)
-#    
+#        ax.set_xlabel(legend, fontsize=10)
+#        
 #    for obj in axObj.ravel():
 #        obj.grid(False)
 #        obj.set_xlim(0, 1)
@@ -215,85 +218,93 @@ if __name__ == "__main__":
 
     
     # Generating the LATEX format tables
-    scoresCompare = pd.DataFrame(None)
-    table_list = [60, 80, 100, 120, 140, 160, 180]
-    scoresCompare["K"] = table_list
-    scoresCompare["Features"] = [featureRocRec[1][ind] for ind, item in enumerate(featureRocRec[0]) if item in table_list]
-    for ind, (name, score) in enumerate(zip(repName, rocRec)):
-        scoresCompare[name] = [rocRec[ind][1][i] for i, item in enumerate(rocRec[ind][0]) if item in table_list]
-    
-    scoresCompare = scoresCompare[["K", "Features", "DAE-80", "SDAE-100-50", "GRU-40", "GRU-70",
-                                   "Average-20-20", "Average-30-30", "Weighted-20-20",
-                                   "Weighted-30-30"]]
-    
-    scores_str = ""
-    with open(".//Models//" + '3_ROC_anomaly_detection_results.txt', 'w') as f:
-        scores_vals = scoresCompare.values
-        for i in range(scores_vals.shape[0]):
-            for j in range(scores_vals.shape[1]):
-                if j != (scores_vals.shape[1] - 1):
-                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + " & "
-                else:
-                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + "\\\\"
-            scores_str += "\n"
-        f.write(scores_str)
+#    scoresCompare = pd.DataFrame(None)
+#    table_list = [60, 80, 100, 140, 190]
+#    scoresCompare["K"] = table_list
+#    scoresCompare["Featuresbased"] = [featureRocRec[1][ind] for ind, item in enumerate(featureRocRec[0]) if item in table_list]
+#    for ind, (name, score) in enumerate(zip(repName, rocRec)):
+#        scoresCompare[name] = [rocRec[ind][1][i] for i, item in enumerate(rocRec[ind][0]) if item in table_list]
+#    
+#    scoresCompare = scoresCompare[["K", "Featuresbased", "SPDAE-80", "STDAE-150-50", "GRU-40", "GRU-70",
+#                                   "Average-I", "Average-II", "Weighted-I",
+#                                   "Weighted-II"]]
+#    scoresCompare = scoresCompare.T
+#    scoresCompare.columns = table_list
+#    
+#    scores_str = ""
+#    with open(".//Models//" + '3_ROC_anomaly_detection_results.txt', 'w') as f:
+#        scores_vals = scoresCompare.values
+#        for i in range(scores_vals.shape[0]):
+#            for j in range(scores_vals.shape[1]):
+#                if j != (scores_vals.shape[1] - 1):
+#                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + " & "
+#                else:
+#                    scores_str = scores_str + str(round(scores_vals[i, j], 3)) + "\\\\"
+#            scores_str += "\n"
+#        f.write(scores_str)
 
     '''
     Plot 2: Weights changing, bins changing.
     '''
-    plt.close("all")
-    #####################################################
-    fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
-    nn_nums = "in_3"
-    for plot_ind, (ax, stride, windowSize) in enumerate(zip(axObj[0], [20, 30, 40], [20, 30, 40])):
-        repName = [ind for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)]
-        print([item for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)])
-        print("\n")
-        rep_tmp = [repOriginal[ind] for ind in repName][0]
-        
-        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
-        rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
-        rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
-        base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
-        
-        for ind, (res, param) in enumerate(zip(rep_lof_results, params)):
-            ax.plot(res[2][0], res[2][1], lw=2,
-                    color=colors[ind], marker=markers[ind],
-                    label="alpha={}, bins={}".format(param[0], param[1]))
-        ax.plot(base_score[2][0], base_score[2][1], lw=2,
-                color="darkgreen", marker="x", linestyle="--",
-                label="Simple average")
-        ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=10)
-        ax.legend(fontsize=8)
-    print("Row 1 completed.")
-
-    for plot_ind, (ax, stride) in enumerate(zip(axObj[1], [10, 20, 30])):
-        repName = [ind for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)]
-        print([item for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)])
-        print("\n")
-        rep_tmp = [repOriginal[ind] for ind in repName][0]
-        
-        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
-        rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
-        rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
-        base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
-        
-        for ind, (res, param) in enumerate(zip(rep_lof_results, params)):
-            ax.plot(res[2][0], res[2][1], lw=2,
-                    color=colors[ind], marker=markers[ind],
-                    label="alpha={}, bins={}".format(param[0], param[1]))
-        ax.plot(base_score[2][0], base_score[2][1], lw=2,
-                color="darkgreen", marker="x", linestyle="--",
-                label="Simple average")
-        ax.set_xlim(59, 201)
-        ax.tick_params(axis="both", labelsize=10)
-        ax.legend(fontsize=8)
-    plt.tight_layout()
-    print("Row 2 completed.")
-    
-    if plotSave == True:
-        plt.savefig(".//Plots//3_ROC_different_weights_bin_stride_windowSize_roc_"+ nn_nums + ".pdf", dpi=500, bbox_inches="tight")
+#    plt.close("all")
+#    #####################################################
+#    fig, axObj = plt.subplots(2, 3, figsize=(19, 8))
+#    nn_nums = "in_3"
+#    for plot_ind, (ax, stride, windowSize) in enumerate(zip(axObj[0], [20, 30, 40], [20, 30, 40])):
+#        repName = [ind for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)]
+#        print([item for ind, item in enumerate(fileNameAE) if ((str(windowSize) + "_" + str(stride)) in item) and (nn_nums in item)])
+#        print("\n")
+#        rep_tmp = [repOriginal[ind] for ind in repName][0]
+#        
+#        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
+#        rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
+#        rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
+#        base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
+#        
+#        for ind, (res, param) in enumerate(zip(rep_lof_results, params)):
+#            ax.plot(res[2][0], res[2][1], lw=2,
+#                    color=colors[ind], marker=markers[ind],
+#                    label=r"$\alpha$={}, L={}".format(param[0], param[1]))
+#        ax.plot(base_score[2][0], base_score[2][1], lw=2,
+#                color="darkgreen", marker="x", linestyle="--",
+#                label="Average")
+#        ax.set_xlim(59, 201)
+#        ax.tick_params(axis="both", labelsize=10)
+#        ax.legend(fontsize=8, loc="lower right")
+#        ax.set_xlabel("k", fontsize=10)
+#        ax.set_ylabel("Area Under Curve(AUC)", fontsize=10)
+#        
+#    print("Row 1 completed.")
+#
+#    for plot_ind, (ax, stride) in enumerate(zip(axObj[1], [10, 20, 30])):
+#        repName = [ind for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)]
+#        print([item for ind, item in enumerate(fileNameAE) if (("_40_" + str(stride)) in item) and (nn_nums in item)])
+#        print("\n")
+#        rep_tmp = [repOriginal[ind] for ind in repName][0]
+#        
+#        params = [[3.5, 10], [1.2, 10], [0.1, 10], [0.3, 10], [0.3, 25], [0.3, 50]]
+#        rep_test = [weighting_rep(rep_tmp, norm_factor=item[0], bin_name="bin_freq_" + str(item[1])) for item in params]
+#        rep_lof_results = [select_best_lof_value(rep_test[ind][1], y_true, [i for i in range(60, 200+20, 20)]) for ind in range(len(rep_test))]
+#        base_score = select_best_lof_value(rep_test[0][0], y_true, [i for i in range(60, 220, 20)])
+#        
+#        for ind, (res, param) in enumerate(zip(rep_lof_results, params)):
+#            ax.plot(res[2][0], res[2][1], lw=2,
+#                    color=colors[ind], marker=markers[ind],
+#                    label=r"$\alpha$={}, L={}".format(param[0], param[1]))
+#        ax.plot(base_score[2][0], base_score[2][1], lw=2,
+#                color="darkgreen", marker="x", linestyle="--",
+#                label="Average")
+#        ax.set_xlim(59, 201)
+#        ax.tick_params(axis="both", labelsize=10)
+#        ax.legend(fontsize=8)
+#        ax.set_xlabel("k", fontsize=10)
+#        ax.set_ylabel("Area Under Curve(AUC)", fontsize=10)
+#        
+#    plt.tight_layout()
+#    print("Row 2 completed.")
+#    
+#    if plotSave == True:
+#        plt.savefig(".//Plots//3_ROC_different_weights_bin_stride_windowSize_roc_"+ nn_nums + ".pdf", dpi=500, bbox_inches="tight")
 
     '''
     Plot 3: Increasing the neurons
@@ -319,11 +330,13 @@ if __name__ == "__main__":
 #        for ind, (res, param) in enumerate(zip(rep_lof_results_in, [5, 15, 25, 35, 45, 60])):
 #            ax.plot(res[2][0], res[2][1], lw=2,
 #                    color=colors[ind], marker=markers[ind],
-#                    label="Neurons={}".format(param))
+#                    label="Units={}".format(param))
 #        ax.set_xlim(59, 201)
 #        ax.tick_params(axis="both", labelsize=8)
 #        ax.legend(fontsize=10)
-#
+#        ax.set_xlabel("k", fontsize=10)
+#        ax.set_ylabel("Area Under Curve(AUC)", fontsize=10)
+#        
 #    # Row 2
 #    #--------------------------------------------------
 #    # windowSize=40, stride=(10, 20, 30)
@@ -341,11 +354,13 @@ if __name__ == "__main__":
 #        for ind, (res, param) in enumerate(zip(rep_lof_results_in, [5, 15, 25, 35, 45, 60])):
 #            ax.plot(res[2][0], res[2][1], lw=2,
 #                    color=colors[ind], marker=markers[ind],
-#                    label="Neurons={}".format(param))
+#                    label="Units={}".format(param))
 #        ax.set_xlim(59, 201)
 #        ax.tick_params(axis="both", labelsize=8)
 #        ax.legend(fontsize=10)
-#
+#        ax.set_xlabel("k", fontsize=10)
+#        ax.set_ylabel("Area Under Curve(AUC)", fontsize=10)
+#        
 #    plt.tight_layout()
 #    if plotSave == True:
 #        plt.savefig(".//Plots//3_ROC_different_neurons_dropout_stride_windowSize_roc.pdf", dpi=500, bbox_inches="tight")
