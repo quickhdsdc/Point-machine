@@ -1,8 +1,12 @@
 # NO .pkl data
 *.pkl
 
-# No .png files.
+# No *.png, *.pdf files.
 *.png
+*.pdf
+
+# No *.txt
+*.txt
 
 # Except 
 !/Data/current_ts_merged_3300.pkl
