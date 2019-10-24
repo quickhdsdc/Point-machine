@@ -9,4 +9,4 @@
 *.txt
 
 # Except 
-!/Data/current_ts_merged_3300.pkl
+!/Data/current_ts_3300.pkl
